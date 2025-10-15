@@ -1,0 +1,12 @@
+-r base.txt
+
+black==25.9.0
+isort==6.1.0
+flake8==7.3.0
+
+pytest-django==4.11.1
+pytest-factoryboy==2.8.1
+Faker==37.8.0
+pytest-cov==7.0.0
+
+django-debug-toolbar==6.0.0
