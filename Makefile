@@ -17,40 +17,37 @@ production:
 	pip install -r ./requirements/production.txt
 
 build:
-	docker compose -f local.docker-compose.yaml build
+	docker-compose -f local.docker-compose.yaml build
 
 up:
-	docker compose -f local.docker-compose.yaml up 
+	docker-compose -f local.docker-compose.yaml up
 
 stop:
-	docker compose -f local.docker-compose.yaml stop
+	docker-compose -f local.docker-compose.yaml stop
 
 down:
-	docker compose -f local.docker-compose.yaml down
+	docker-compose -f local.docker-compose.yaml down
 
 down-v:
-	docker compose  -f local.docker-compose.yaml down -v
+	docker-compose  -f local.docker-compose.yaml down -v
 
 logs:
-	docker compose -f local.docker-compose.yaml logs
+	docker-compose -f local.docker-compose.yaml logs
 
 api-logs:
-	docker compose -f local.docker-compose.yaml logs api
+	docker-compose -f local.docker-compose.yaml logs api
 
 db-logs:
-	docker compose -f local.docker-compose.yaml logs db
+	docker-compose -f local.docker-compose.yaml logs db
 
 worker-logs:
-	docker compose -f local.docker-compose.yaml logs worker
+	docker-compose -f local.docker-compose.yaml logs worker
 
 flower-logs:
-	docker compose -f local.docker-compose.yaml logs flower
-
-
+	docker-compose -f local.docker-compose.yaml logs flower
 
 beat-logs:
-	docker compose -f local.docker-compose.yaml logs beat
-
+	docker-compose -f local.docker-compose.yaml logs beat
 
 status:
 	docker ps
