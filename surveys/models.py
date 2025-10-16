@@ -326,33 +326,34 @@ class QuestionOptions(BaseModel):
     def clean(self):
         super().clean()
 
-        fields_check = {
-            self.OptionType.TEXT: self.text_value,
-            self.OptionType.BOOLEAN: self.boolean_value,
-            self.OptionType.NUMERIC: self.numeric_value,
-            self.OptionType.IMAGE: self.image_value,
-            self.OptionType.JSON: self.json_value,
+        field_mapping = {
+            self.OptionType.TEXT: ("text_value", self.text_value),
+            self.OptionType.BOOLEAN: ("boolean_value", self.boolean_value),
+            self.OptionType.NUMERIC: ("numeric_value", self.numeric_value),
+            self.OptionType.IMAGE: ("image_value", self.image_value),
+            self.OptionType.JSON: ("json_value", self.json_value),
         }
 
-        required_field_value = fields_check.get(self.type)
-        if required_field_value is None:
-            raise ValidationError(
-                {
-                    "type": _(
-                        f"برای نوع گزینه {self.get_type_display()} باید مقدار مربوطه پر شود"
-                    ),
-                }
+        errors = {}
+
+        # بررسی اینکه فیلد مربوط به نوع انتخاب شده پر شده باشد
+        required_field_name, required_field_value = field_mapping.get(
+            self.type, (None, None)
+        )
+        if required_field_value in [None, ""]:
+            errors["type"] = _(
+                f"برای نوع گزینه {self.get_type_display()} باید مقدار مربوطه پر شود"
             )
 
-        for field_type, field_value in fields_check.items():
-            if field_type != self.type and field_value not in [None, ""]:
-                raise ValidationError(
-                    {
-                        field_type: _(
-                            f"این فیلد فقط برای نوع گزینه '{self.OptionType(field_type).label}' قابل استفاده است"
-                        )
-                    }
+        # بررسی اینکه فیلدهای دیگر خالی باشند
+        for field_type, (field_name, field_value) in field_mapping.items():
+            if field_type != self.type and field_value not in [None, "", False]:
+                errors[field_name] = _(
+                    f"این فیلد فقط برای نوع گزینه '{self.OptionType(field_type).label}' قابل استفاده است"
                 )
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         self.full_clean()
