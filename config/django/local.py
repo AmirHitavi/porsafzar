@@ -1,5 +1,5 @@
 from .base import *  # noqa
-from .base import env, INSTALLED_APPS, MIDDLEWARE
+from .base import INSTALLED_APPS, MIDDLEWARE, env
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env(

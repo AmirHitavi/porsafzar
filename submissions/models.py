@@ -1,3 +1,137 @@
-from django.db import models
+from uuid import uuid4
 
-# Create your models here.
+from django.contrib.auth import get_user_model
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from jsonschema.exceptions import ValidationError
+
+from common.models import BaseUpdateModel
+from surveys.models import Question, SurveyForm
+
+User = get_user_model()
+
+
+class AnswerSet(BaseUpdateModel):
+    uuid = models.UUIDField(
+        verbose_name=_("uuid"),
+        default=uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
+    user = models.ForeignKey(
+        User,
+        verbose_name=_("کاربر"),
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="answer_sets",
+    )
+    survey_form = models.ForeignKey(
+        SurveyForm,
+        verbose_name=_("فرم پرسشنامه"),
+        on_delete=models.CASCADE,
+        related_name="answer_sets",
+    )
+    metadata = models.JSONField(verbose_name=_("جیسون جواب پرسشنامه"))
+    deleted_at = models.DateTimeField(
+        verbose_name=_("تاریخ حدف"), null=True, blank=True
+    )
+
+    class Meta:
+        verbose_name = _("مجوعه جواب")
+        verbose_name_plural = _("مجموعه های جواب")
+        ordering = ["-updated_at", "-created_at"]
+
+    def __str__(self):
+        return f"answer set: {self.survey_form} form"
+
+
+class Answer(BaseUpdateModel):
+    class AnswerType(models.TextChoices):
+        TEXT = "text", _("متنی")
+        BOOLEAN = "boolean", _("بولین")
+        NUMERIC = "numeric", _("عددی")
+        FILE = "file", _("فایل")
+        JSON = "json", _("جیسون")
+
+    answer_set = models.ForeignKey(
+        AnswerSet,
+        verbose_name=_("مجموعه جواب"),
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+    question = models.ForeignKey(
+        Question,
+        verbose_name=_("سوال"),
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+    question_type = models.CharField(verbose_name=_("نوع سوال"), max_length=30)
+    answer_type = models.CharField(
+        verbose_name=_("نوع جواب"), max_length=30, choices=AnswerType.choices
+    )
+    text_value = models.CharField(
+        verbose_name=_("مقدار متنی"), max_length=255, null=True, blank=True
+    )
+    boolean_value = models.BooleanField(
+        verbose_name=_("مقدار بولین"), null=True, blank=True
+    )
+    numeric_value = models.IntegerField(
+        verbose_name=_("مقدار عددی"), null=True, blank=True
+    )
+    file_value = models.FileField(
+        verbose_name=_("فایل"),
+        upload_to="submissions/answers/file/",
+        null=True,
+        blank=True,
+    )
+    json_value = models.JSONField(verbose_name=_("مقدار JSON"), null=True, blank=True)
+    deleted_at = models.DateTimeField(
+        verbose_name=_("تاریخ حدف"), null=True, blank=True
+    )
+
+    class Meta:
+        verbose_name = _(" جواب")
+        verbose_name_plural = _("جواب ها")
+        unique_together = ("question", "answer_set")
+        ordering = ["-updated_at", "-created_at"]
+
+    def __str__(self):
+        return f"answer {self.question} from {self.answer_set}"
+
+    def clean(self):
+        super().clean()
+
+        type_to_fields = {
+            self.AnswerType.TEXT: self.text_value,
+            self.AnswerType.BOOLEAN: self.boolean_value,
+            self.AnswerType.NUMERIC: self.numeric_value,
+            self.AnswerType.FILE: self.file_value,
+            self.AnswerType.JSON: self.json_value,
+        }
+
+        required_field_value = type_to_fields.get(self.answer_type)
+
+        if required_field_value is None:
+            raise ValidationError(
+                {
+                    "type": _(
+                        f"برای نوع گزینه {self.get_answer_type_display()} باید مقدار مربوطه پر شود"
+                    )
+                }
+            )
+
+        for field_type, field_value in type_to_fields.items():
+            if field_type != self.answer_type and field_value is not None:
+                raise ValidationError(
+                    {
+                        field_type: _(
+                            f"این فیلد فقط برای نوع گزینه '{self.AnswerType(field_type).label}' قابل استفاده است"
+                        )
+                    }
+                )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
