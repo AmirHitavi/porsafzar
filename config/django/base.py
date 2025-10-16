@@ -11,7 +11,8 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
 # Application definition
 
 LOCAL_APPS = [
-    "accounts.apps.AccountsConfig"
+    "accounts.apps.AccountsConfig",
+    "surveys.apps.SurveysConfig",
 ]
 
 THIRD_PARTY_APPS = [
