@@ -10,7 +10,9 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
 
 # Application definition
 
-LOCAL_APPS = []
+LOCAL_APPS = [
+    "accounts.apps.AccountsConfig"
+]
 
 THIRD_PARTY_APPS = [
     "django_filters",
