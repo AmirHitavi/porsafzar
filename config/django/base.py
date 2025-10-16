@@ -134,6 +134,8 @@ LOGGING = {
     "root": {"level": "INFO", "handlers": ["console"]},
 }
 
+AUTH_USER_MODEL = "accounts.User"
+
 from config.settings.beat import *  # noqa
 from config.settings.cache import *  # noqa
 from config.settings.celery import *  # noqa
