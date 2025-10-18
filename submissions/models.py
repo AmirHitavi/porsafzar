@@ -3,8 +3,7 @@ from uuid import uuid4
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from jsonschema.exceptions import ValidationError
-
+from django.core.exceptions import ValidationError
 from common.models import BaseUpdateModel
 from surveys.models import Question, SurveyForm
 
@@ -98,39 +97,38 @@ class Answer(BaseUpdateModel):
         ordering = ["-updated_at", "-created_at"]
 
     def __str__(self):
-        return f"answer {self.question} from {self.answer_set}"
+        return f"answer {self.question.id} from {self.answer_set.id}"
 
     def clean(self):
         super().clean()
 
-        type_to_fields = {
-            self.AnswerType.TEXT: self.text_value,
-            self.AnswerType.BOOLEAN: self.boolean_value,
-            self.AnswerType.NUMERIC: self.numeric_value,
-            self.AnswerType.FILE: self.file_value,
-            self.AnswerType.JSON: self.json_value,
+        fields_mapping = {
+            self.AnswerType.TEXT: ("text_value", self.text_value),
+            self.AnswerType.BOOLEAN: ("boolean_value", self.boolean_value),
+            self.AnswerType.NUMERIC: ("numeric_value", self.numeric_value),
+            self.AnswerType.FILE: ("file_value", self.file_value),
+            self.AnswerType.JSON: ("json_value", self.json_value),
         }
 
-        required_field_value = type_to_fields.get(self.answer_type)
+        errors = {}
 
+        required_field_name, required_field_value = fields_mapping[self.answer_type]
+
+        #  بررسی اینکه فیلد مربوط به نوع انتخاب شده پر شده باشد
         if required_field_value is None:
-            raise ValidationError(
-                {
-                    "type": _(
-                        f"برای نوع گزینه {self.get_answer_type_display()} باید مقدار مربوطه پر شود"
-                    )
-                }
+            errors["answer_type"] = _(
+                f"برای نو {self.get_answer_type_display()} باید مقدار مربوطه پرشود."
             )
 
-        for field_type, field_value in type_to_fields.items():
+        # # بررسی اینکه فیلدهای دیگر خالی باشند
+        for field_type, (field_name, field_value) in fields_mapping.items():
             if field_type != self.answer_type and field_value is not None:
-                raise ValidationError(
-                    {
-                        field_type: _(
-                            f"این فیلد فقط برای نوع گزینه '{self.AnswerType(field_type).label}' قابل استفاده است"
-                        )
-                    }
+                errors[field_name] = _(
+                    f"این فیلد فقط برای نوع گزینه {self.AnswerType(field_type).label}. قابل استفاده است"
                 )
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         self.full_clean()
