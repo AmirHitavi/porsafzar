@@ -135,6 +135,7 @@ LOGGING = {
 }
 
 AUTH_USER_MODEL = "accounts.User"
+PHONE_SECRET_KEY = env("PHONE_SECRET_KEY")
 
 from config.settings.beat import *  # noqa
 from config.settings.cache import *  # noqa
