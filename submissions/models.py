@@ -1,9 +1,10 @@
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ValidationError
+
 from common.models import BaseUpdateModel
 from surveys.models import Question, SurveyForm
 
