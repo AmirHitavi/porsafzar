@@ -1,6 +1,5 @@
 from celery import shared_task
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 
 from .models import SurveyFormSettings
 from .utils import survey_settings_activation

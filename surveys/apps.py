@@ -6,4 +6,4 @@ class SurveysConfig(AppConfig):
     name = "surveys"
 
     def ready(self):
-        import surveys.signals
+        import surveys.signals  # noqa

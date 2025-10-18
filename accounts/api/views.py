@@ -63,7 +63,8 @@ class UserViewSet(ModelViewSet):
                 return Response(
                     {
                         "message": _(
-                            "اکانت موفقیت آمیز ساخته شد اما در ارسال کد به تلفن همراه شما به مشکل خوردیم.لطفا دوباره تلاش بکنید."
+                            "اکانت موفقیت آمیز ساخته شد اما در ارسال کد به تلفن همراه شما به مشکل خوردیم."
+                            "لطفا دوباره تلاش بکنید."
                         ),
                         "phone_number": phone_number,
                         "user_id": user.id,
@@ -71,9 +72,9 @@ class UserViewSet(ModelViewSet):
                     status=status.HTTP_201_CREATED,
                 )
 
-        except Exception as e:
+        except Exception:
             return Response(
-                {"error": f"مشکل در ساخت اکانت کاربری"},
+                {"error": "مشکل در ساخت اکانت کاربری"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -209,7 +210,7 @@ class UserViewSet(ModelViewSet):
                         "phone_number": phone_number,
                         "user_id": user.id,
                     },
-                    status=status.HTTP_201_CREATED,
+                    status=status.HTTP_200_OK,
                 )
 
         except User.DoesNotExist:
