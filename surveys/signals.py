@@ -1,29 +1,30 @@
-from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import SurveyForm, SurveyFormSettings
+from .utils import schedule_task, survey_settings_activation
 
 
 @receiver(post_save, sender=SurveyFormSettings)
-def handle_active_survey_form(sender, instance, **kwargs):
-    form = instance.form
-    parent_survey = form.parent
+def handle_active_survey_form(sender, instance: SurveyFormSettings, **kwargs):
 
-    with transaction.atomic():
-        if instance.is_active is True:
-            # غیرفعال کردن همه تنظیمات فرم ها با پدر یکسان
-            SurveyFormSettings.objects.filter(form__parent=parent_survey).exclude(
-                pk=instance.pk
-            ).update(is_active=False)
+    survey_settings_activation(instance)
 
-            parent_survey.active_version = form
-            parent_survey.save()
+    if instance.start_date:
+        schedule_task(
+            "activate_form",
+            "surveys.tasks.activate_form",
+            instance.start_date,
+            instance.pk,
+        )
 
-        else:
-            if parent_survey.active_version == form:
-                parent_survey.active_version = None
-                parent_survey.save()
+    if instance.end_date:
+        schedule_task(
+            "deactivate_form",
+            "surveys.tasks.deactivate_form",
+            instance.end_date,
+            instance.pk,
+        )
 
 
 @receiver(post_save, sender=SurveyForm)
