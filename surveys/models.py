@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 
 from common.models import BaseModel
 
@@ -183,6 +184,29 @@ class SurveyFormSettings(BaseModel):
         verbose_name = _(" تنظمیات فرم نظرسنجی")
         verbose_name_plural = _("تنظیمات فرم های نظرسنجی")
         ordering = ["-created_at"]
+
+    def clean(self):
+        super().clean()
+
+        now = timezone.now()
+
+        errors = {}
+
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            errors["end_date"] = _("تاریخ پایان نمی تواند بعد از تاریخ شروع باشد.")
+
+        if self.start_date and self.start_date < now:
+            errors["start_date"] = _("تاریخ شروع نمی‌تواند در گذشته باشد.")
+
+        if self.end_date and self.end_date <= now:
+            errors["end_date"] = _("تاریخ پایان باید بعد از زمان حال باشد.")
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class OneTimeLink(BaseModel):
