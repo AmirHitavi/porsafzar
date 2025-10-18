@@ -17,7 +17,12 @@ class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
 
     def get_serializer_class(self):
-        if self.action in ["verify_otp", "resend_otp"]:
+        if self.action in [
+            "register_verify_otp",
+            "register_resend_otp",
+            "login_verify_otp",
+            "login_resend_otp",
+        ]:
             return UserOTPSerializer
         elif self.action in ["login"]:
             return UserLoginSerializer
@@ -79,7 +84,7 @@ class UserViewSet(ModelViewSet):
             )
 
     @action(detail=False, methods=["post"])
-    def verify_otp(self, request, *args, **kwargs):
+    def register_verify_otp(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -131,7 +136,7 @@ class UserViewSet(ModelViewSet):
             )
 
     @action(detail=False, methods=["post"])
-    def resend_otp(self, request, *args, **kwargs):
+    def register_resend_otp(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -217,6 +222,85 @@ class UserViewSet(ModelViewSet):
             return Response(
                 {
                     "error": _("کاربری با این شماره تلفن وجود ندارد."),
+                    "code": "USER_NOT_EXISTS",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    @action(detail=False, methods=["post"])
+    def login_verify_otp(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        phone_number = serializer.validated_data.get("phone_number")
+        otp = serializer.validated_data.get("otp")
+
+        try:
+            user = User.objects.get(phone_number=phone_number)
+
+            otp_response = OTPHandler.verify_otp(phone_number, otp)
+
+            refresh = RefreshToken.for_user(user)
+
+            if otp_response["status"] == "success":
+                user.is_active = True
+                user.save()
+
+                return Response(
+                    {
+                        "message": otp_response["message"],
+                        "code": otp_response["code"],
+                        "refresh": str(refresh),
+                        "access": str(refresh.access_token),
+                        "user_id": user.id,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            elif otp_response["status"] == "error":
+                return Response(
+                    {"message": otp_response["message"], "code": otp_response["code"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except User.DoesNotExist:
+            return Response(
+                {
+                    "error": _("کاربری با این شماره همراه وجود ندارد"),
+                    "code": "USER_NOT_EXISTS",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    @action(detail=False, methods=["post"])
+    def login_resend_otp(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        phone_number = serializer.validated_data.get("phone_number")
+
+        try:
+            user = User.objects.get(phone_number=phone_number)
+
+            otp_response = OTPHandler.generate_otp(phone_number)
+
+            if otp_response["status"] == "success":
+                return Response(
+                    {
+                        "message": _("برای شماره تلفن شما کدی ارسال شده است."),
+                        "phone_number": phone_number,
+                        "user_id": user.id,
+                    },
+                    status=status.HTTP_201_CREATED,
+                )
+            elif otp_response["status"] == "error":
+                return Response(
+                    {"message": otp_response["message"], "code": otp_response["code"]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        except User.DoesNotExist:
+            return Response(
+                {
+                    "error": _("کاربری با این شماره همراه وجود ندارد"),
                     "code": "USER_NOT_EXISTS",
                 },
                 status=status.HTTP_404_NOT_FOUND,

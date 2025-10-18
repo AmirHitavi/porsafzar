@@ -67,7 +67,7 @@ class UserOTPSerializer(serializers.Serializer):
         if hasattr(self, "context") and self.context.get("action"):
             action = self.context.get("action")
 
-            if action == "resend_otp":
+            if action in ["register_resend_otp", "login_resend_otp"]:
                 allowed_fields = {"phone_number"}
 
                 for field in set(self.fields) - allowed_fields:
