@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
@@ -45,16 +46,19 @@ class SurveyViewSet(ModelViewSet):
 
         json_data = serializer.validated_data.get("data")
 
-        # create a survey
-        survey_title = json_data.get("title")
-        survey = create_survey(self.request.user, survey_title)
+        with transaction.atomic():
+            # create a survey
+            survey_title = json_data.get("title")
+            survey = create_survey(self.request.user, survey_title)
 
-        # create a survey form
-        survey_form = create_survey_form(parent=survey, json_data=json_data, version=1)
+            # create a survey form
+            survey_form = create_survey_form(
+                parent=survey, json_data=json_data, version=1
+            )
 
-        # create questions
-        pages = json_data.get("pages")
-        create_questions(form=survey_form, pages=pages)
+            # create questions
+            pages = json_data.get("pages")
+            create_questions(form=survey_form, pages=pages)
 
         return Response(status=status.HTTP_201_CREATED)
 
