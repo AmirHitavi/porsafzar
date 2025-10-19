@@ -40,7 +40,7 @@ def create_question_with_text_options(
     question_name: str,
     question_type: str,
     question_title: Optional[str] = None,
-    choices: list
+    choices: list[str | dict]
 ) -> Question:
     question = Question(
         survey=form,
@@ -147,7 +147,7 @@ def create_rating_question(
     return question
 
 
-def create_questions(*, form: SurveyForm, pages: list):
+def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
     for page in pages:
         questions_elements = page.get("elements")
         for question_element in questions_elements:
