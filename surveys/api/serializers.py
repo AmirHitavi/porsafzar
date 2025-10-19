@@ -3,22 +3,18 @@ from rest_framework import serializers
 from ..models import Survey, SurveyForm
 
 
+class CreateSurveySerializer(serializers.Serializer):
+    data = serializers.JSONField(required=True)
+
+
 class SurveySerializer(serializers.ModelSerializer):
+    data = serializers.JSONField(write_only=True)
 
     class Meta:
         model = Survey
-        fields = ["uuid", "title", "created_by", "active_version", "deleted_at"]
+        fields = ["uuid", "title", "created_by", "active_version", "deleted_at", "data"]
 
         read_only_fields = ["uuid", "deleted_at"]
-
-        # def __init__(self, *args, **kwargs):
-        #     super().__init__(*args, **kwargs)
-        #
-        #     if hasattr(self, "context") and self.context.get("action"):
-        #         action = self.context.get("action")
-        #
-        #         if action == "list":
-        #            self.fields.pop("deleted_at")
 
 
 class SurveyFormSerializer(serializers.ModelSerializer):

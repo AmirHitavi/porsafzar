@@ -28,7 +28,7 @@ class Survey(BaseModel):
         User,
         verbose_name=_("کاربر سازنده"),
         on_delete=models.SET_NULL,
-        null=True,
+        null=True,  # TODO delete this lines
         blank=True,
         related_name="surveys",
         editable=False,

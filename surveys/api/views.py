@@ -6,17 +6,23 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from ..models import Survey
+from ..models import Survey, SurveyForm
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
-from .serializers import SurveyForm, SurveyFormSerializer, SurveySerializer
+from .serializers import CreateSurveySerializer, SurveyFormSerializer, SurveySerializer
+from .services import create_questions, create_survey, create_survey_form
 
 
 class SurveyViewSet(ModelViewSet):
 
     queryset = Survey.objects.filter(deleted_at__isnull=True)
-    serializer_class = SurveySerializer
+    # serializer_class = SurveySerializer
     lookup_field = "uuid"
     http_method_names = ["get", "post", "patch", "delete"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            CreateSurveySerializer
+        return SurveySerializer
 
     def get_permissions(self):
 
@@ -29,11 +35,31 @@ class SurveyViewSet(ModelViewSet):
         return [IsAuthenticated()]
 
     def get_serializer_context(self):
-        super().get_serializer_context()
-        return {"action": self.action}
+        context = super().get_serializer_context()
+        context["action"] = self.action
+        return context
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        json_data = serializer.validated_data.get("data")
+
+        # create a survey
+        survey_title = json_data.get("title")
+        survey = create_survey(self.request.user, survey_title)
+
+        # create a survey form
+        survey_form = create_survey_form(parent=survey, json_data=json_data, version=1)
+
+        # create questions
+        pages = json_data.get("pages")
+        create_questions(form=survey_form, pages=pages)
+
+        return Response(status=status.HTTP_201_CREATED)
+
+    # def perform_create(self, serializer):
+    #     serializer.save(created_by=self.request.user)
 
     @action(detail=True, methods=["post"])
     def soft_delete(self, request, *args, **kwargs):
@@ -82,7 +108,6 @@ class SurveyFormViewSet(ModelViewSet):
             return [IsManagementOrProfessorOrAdmin()]
         else:
             return [AllowAny()]
-
 
     def get_queryset(self):
         return SurveyForm.objects.filter(
