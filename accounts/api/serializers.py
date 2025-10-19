@@ -44,6 +44,9 @@ class UserSerializer(serializers.ModelSerializer):
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
+            if action == "logout":
+                self.fields.clear()
+
 
 class UserOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField(

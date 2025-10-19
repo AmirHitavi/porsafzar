@@ -2,9 +2,11 @@ from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
+from yaml import serialize
 
 from ..utils import OTPHandler
 from .serializers import UserLoginSerializer, UserOTPSerializer, UserSerializer
@@ -305,3 +307,35 @@ class UserViewSet(ModelViewSet):
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+    @action(detail=False, methods=["post"])
+    def logout(self, request, *args, **kwargs):
+        try:
+            refresh_token = request.data.get("refresh")
+
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+                return Response(
+                    {"detail": _("خروج موفقیت آمیز بود.")}, status=status.HTTP_200_OK
+                )
+        except Exception as e:
+            return Response(
+                {"error": _("خطا در خروج")}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(
+        detail=False, methods=["get", "patch"], permission_classes=[IsAuthenticated]
+    )
+    def me(self, request, *args, **kwargs):
+        user = request.user
+
+        if request.method == "GET":
+            serializer = self.get_serializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        elif request.method == "PATCH":
+            serializer = self.get_serializer(user, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
