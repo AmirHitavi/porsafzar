@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ..models import Survey
+from ..models import Survey, SurveyForm
 
 
 class SurveySerializer(serializers.ModelSerializer):
@@ -19,3 +19,13 @@ class SurveySerializer(serializers.ModelSerializer):
         #
         #         if action == "list":
         #            self.fields.pop("deleted_at")
+
+
+class SurveyFormSerializer(serializers.ModelSerializer):
+    parent = serializers.UUIDField(source="parent.uuid", read_only=True)
+
+    class Meta:
+        model = SurveyForm
+        fields = ["uuid", "version", "description", "metadata", "parent", "deleted_at"]
+
+        read_only_fields = ["uuid", "deleted_at"]
