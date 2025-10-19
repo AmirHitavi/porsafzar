@@ -22,7 +22,6 @@ class UserSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = [
-            "role",
             "is_active",
             "is_staff",
             "is_superuser",
@@ -39,7 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
             action = self.context.get("action")
 
             if action == "create":
-                allowed_fields = {"phone_number"}
+                allowed_fields = {"phone_number", "email", "role"}
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
@@ -73,24 +72,8 @@ class UserOTPSerializer(serializers.Serializer):
         if hasattr(self, "context") and self.context.get("action"):
             action = self.context.get("action")
 
-            if action in ["register_resend_otp", "login_resend_otp"]:
+            if action in ["register_resend_otp", "login_resend_otp", "login"]:
                 allowed_fields = {"phone_number"}
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
-
-
-class UserLoginSerializer(serializers.Serializer):
-    phone_number = serializers.CharField(
-        max_length=11,
-        min_length=11,
-        validators=[
-            RegexValidator(
-                regex=r"^09\d{9}$",
-                message=_(
-                    "شماره تلفن همراه معتبر ۱۱ رقم دارد و با ۰۹ شروع میشود.مانند ۰۹۱۹۱۲۳۴۵۶۷"
-                ),
-            )
-        ],
-        required=True,
-    )

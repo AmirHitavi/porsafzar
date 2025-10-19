@@ -8,7 +8,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from ..utils import OTPHandler
-from .serializers import UserLoginSerializer, UserOTPSerializer, UserSerializer
+from .serializers import UserOTPSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -40,10 +40,9 @@ class UserViewSet(ModelViewSet):
             "register_resend_otp",
             "login_verify_otp",
             "login_resend_otp",
+            "login",
         ]:
             return UserOTPSerializer
-        elif self.action in ["login"]:
-            return UserLoginSerializer
         else:
             return UserSerializer
 
