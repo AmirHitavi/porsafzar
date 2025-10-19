@@ -32,6 +32,7 @@ urlpatterns = [
         "api/v1/",
         include(
             [
+                path("", include("surveys.api.urls")),
                 path(
                     "docs/",
                     include(
