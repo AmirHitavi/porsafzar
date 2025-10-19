@@ -38,7 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
         if hasattr(self, "context") and self.context.get("action"):
             action = self.context.get("action")
 
-            if action == "register":
+            if action == "create":
                 allowed_fields = {"phone_number"}
 
                 for field in set(self.fields) - allowed_fields:
@@ -50,6 +50,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField(
+        label=_("شماره تلفن"),
         max_length=11,
         min_length=11,
         validators=[
@@ -62,7 +63,9 @@ class UserOTPSerializer(serializers.Serializer):
         ],
         required=True,
     )
-    otp = serializers.CharField(min_length=6, max_length=6, required=True)
+    otp = serializers.CharField(
+        label=_("کد یکبار مصرف"), min_length=6, max_length=6, required=True
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
