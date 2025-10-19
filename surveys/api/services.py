@@ -34,40 +34,18 @@ def create_simple_question(
     return question
 
 
-def create_image_question(
-    *, form: SurveyForm, question_name: str, image_link: str
-) -> Question:
-    question = Question(
-        survey=form,
-        name=question_name,
-        type=Question.QuestionType.IMAGE,
-    )
-    question.full_clean()
-    question.save()
-
-    question_option = QuestionOptions(
-        question=question,
-        type=QuestionOptions.OptionType.IMAGE,
-        value=question_name,
-        image_value=image_link,
-    )
-    question_option.full_clean()
-    question_option.save()
-
-    return question
-
-
-def create_radiogroup_question(
+def create_question_with_text_options(
     *,
     form: SurveyForm,
     question_name: str,
+    question_type: str,
     question_title: Optional[str] = None,
     choices: list
 ) -> Question:
     question = Question(
         survey=form,
         name=question_name,
-        type=Question.QuestionType.RADIOGROUP,
+        type=Question.QuestionType[question_type.upper()],
         title=question_title,
     )
     question.save()
@@ -101,7 +79,75 @@ def create_radiogroup_question(
     return question
 
 
-def create_questions(form: SurveyForm, pages: list):
+def create_boolean_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_title: Optional[str] = None,
+    choices: list
+) -> Question:
+
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.BOOLEAN,
+        title=question_title,
+    )
+    question.save()
+
+    for label_value, boolean_value in choices.items():
+        question_option = QuestionOptions(
+            question=question,
+            type=QuestionOptions.OptionType.BOOLEAN,
+            value=label_value,
+            boolean_value=True if label_value == "labelTrue" else False,
+        )
+        question_option.full_clean()
+        question_option.save()
+
+    return question
+
+
+def create_rating_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_title: Optional[str] = None,
+    choices: Optional[list] = None,
+    rate_count: Optional[int]
+) -> Question:
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.RATING,
+        title=question_title,
+    )
+    question.save()
+
+    if choices:
+        for choice in choices:
+            question_option = QuestionOptions(
+                question=question,
+                type=QuestionOptions.OptionType.NUMERIC,
+                value=choice.get("text"),
+                numeric_value=choice.get("value"),
+            )
+            question_option.full_clean()
+            question_option.save()
+    elif rate_count:
+        for i in range(1, rate_count + 1):
+            question_option = QuestionOptions(
+                question=question,
+                type=QuestionOptions.OptionType.NUMERIC,
+                value=str(i),
+                numeric_value=i,
+            )
+            question_option.full_clean()
+            question_option.save()
+    return question
+
+
+def create_questions(*, form: SurveyForm, pages: list):
     for page in pages:
         questions_elements = page.get("elements")
         for question_element in questions_elements:
@@ -109,12 +155,38 @@ def create_questions(form: SurveyForm, pages: list):
             question_name = question_element.get("name")
             question_title = question_element.get("title", None)
 
+            # radiogroup -> Done
+            # rating -> Done
+            # slider -> Done
+            # checkbox -> Done
+            # dropdown -> Done
+            # tagbox -> Done
+            # boolean -> Done
+            # file -> Done
+            # imagepicker
+            # ranking -> Done
+            # text -> Done
+            # comment -> Done
+            # multipletext
+            # panel
+            # paneldynamic
+            # matrix
+            # matrixdropdown
+            # matrixdynamic
+            # html -> Done
+            # expression -> Done
+            # image -> Done
+            # signaturepad -> Done
+
             if question_type in [
                 "text",
                 "comment",
                 "signaturepad",
                 "expression",
                 "html",
+                "image",
+                "slider",
+                "file",
             ]:
                 create_simple_question(
                     form=form,
@@ -123,17 +195,44 @@ def create_questions(form: SurveyForm, pages: list):
                     question_title=question_title,
                 )
 
-            if question_type == "image":
-                image_link = question_element.get("imageLink")
-                create_image_question(
-                    form=form, question_name=question_name, image_link=image_link
+            if question_type in [
+                "radiogroup",
+                "ranking",
+                "checkbox",
+                "dropdown",
+                "tagbox",
+            ]:
+                choices = question_element.get("choices")
+                create_question_with_text_options(
+                    form=form,
+                    question_name=question_name,
+                    question_type=question_type,
+                    question_title=question_title,
+                    choices=choices,
                 )
 
-            if question_type == "radiogroup":
-                choices = question_element.get("choices")
-                create_radiogroup_question(
+            if question_type == "boolean":
+
+                choices = {
+                    "labelTrue": question_element.get("labelTrue", "Yes"),
+                    "labelFalse": question_element.get("labelFalse", "No"),
+                }
+
+                create_boolean_question(
                     form=form,
                     question_name=question_name,
                     question_title=question_title,
                     choices=choices,
+                )
+
+            if question_type == "rating":
+                choices = question_element.get("rateValues", None)
+                rate_count = question_element.get("rateCount", None)
+
+                create_rating_question(
+                    form=form,
+                    question_name=question_name,
+                    question_title=question_title,
+                    choices=choices,
+                    rate_count=rate_count,
                 )
