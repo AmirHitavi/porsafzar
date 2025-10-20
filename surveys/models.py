@@ -330,9 +330,8 @@ class QuestionOptions(BaseModel):
     numeric_value = models.IntegerField(
         verbose_name=_("مقدار عددی"), null=True, blank=True
     )
-    image_value = models.ImageField(
-        verbose_name=_("تصویر"),
-        upload_to="surveys/options/images/",
+    image_value = models.TextField(
+        verbose_name=_("لینک تصویر"),
         null=True,
         blank=True,
     )
