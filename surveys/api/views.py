@@ -1,6 +1,6 @@
 from xmlrpc.client import Fault
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
@@ -165,20 +165,61 @@ class SurveyFormViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ["create"]:
             return [IsManagementOrProfessorOrAdmin()]
+        elif self.action in ["delete", "soft_delete", "revoke_delete"]:
+            return [IsOwnerOrAdmin()]
         else:
-            return [AllowAny()]
+            return [IsAuthenticated()]
 
     def get_queryset(self):
         return SurveyForm.objects.filter(
             deleted_at__isnull=True, parent__uuid=self.kwargs["survey_uuid"]
         )
 
-    # def get_serializer_context(self):
-    #     super().get_serializer_context()
-    #     return {"action": self.action}
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["action"] = self.action
+        return context
 
-    def perform_create(self, serializer):
-        serializer.save(parent__uuid=self.kwargs["survey_uuid"])
+    # use for update a survey
+    def create(self, request, *args, **kwargs):
+
+        parent = Survey.objects.get(uuid=self.kwargs["survey_uuid"])
+
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        version = serializer.validated_data["version"]
+        description = serializer.validated_data["description"]
+        metadata = serializer.validated_data["metadata"]
+
+        with transaction.atomic():
+            # update survey parent if it has title in metadata
+            parent_title = metadata.get("title", None)
+            if parent_title:
+                parent.title = parent_title
+                parent.save()
+
+            try:
+                # create a new survey form
+                survey_form = create_survey_form(
+                    parent=parent,
+                    json_data=metadata,
+                    version=version,
+                    description=description,
+                )
+                # create questions
+                pages = metadata.get("pages")
+                create_questions(form=survey_form, pages=pages)
+                return Response(
+                    {"detail": _("فرم پرسشنامه بروزرسانی شد.")},
+                    status=status.HTTP_201_CREATED,
+                )
+
+            except IntegrityError:
+                return Response(
+                    {"detail": _("فرم پرسشنامه با این شماره وجود دارد.")},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
     @action(detail=True, methods=["post"])
     def soft_delete(self, request, *args, **kwargs):

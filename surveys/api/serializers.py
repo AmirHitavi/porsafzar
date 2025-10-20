@@ -42,4 +42,4 @@ class SurveyFormSerializer(serializers.ModelSerializer):
         model = SurveyForm
         fields = ["uuid", "version", "description", "metadata", "parent", "deleted_at"]
 
-        read_only_fields = ["uuid", "deleted_at"]
+        read_only_fields = ["uuid", "parent", "deleted_at"]

@@ -11,8 +11,12 @@ def create_survey(user: User, title: Optional[str] = None) -> Survey:
     return Survey.objects.create(created_by=user, title=title)
 
 
-def create_survey_form(parent: Survey, json_data, version: int) -> SurveyForm:
-    return SurveyForm.objects.create(parent=parent, metadata=json_data, version=version)
+def create_survey_form(
+    parent: Survey, json_data, version: int, description: str | None = None
+) -> SurveyForm:
+    return SurveyForm.objects.create(
+        parent=parent, metadata=json_data, version=version, description=description
+    )
 
 
 def create_question(
