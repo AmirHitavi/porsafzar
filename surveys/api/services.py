@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from django.contrib.auth import get_user_model
@@ -219,6 +220,43 @@ def create_multiple_text_question(
     return question
 
 
+def create_matrix_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_title: Optional[str] = None,
+    parent_question: Optional[Question] = None,
+    columns: list[dict],
+    rows: list[dict],
+) -> Question:
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.MATRIX,
+        title=question_title,
+        parent=parent_question,
+    )
+    question.save()
+
+    rows_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value="matrix_rows",
+        json_value=rows,
+    )
+    rows_question_option.full_clean()
+    rows_question_option.save()
+
+    columns_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value=f"matrix_columns",
+        json_value=columns,
+    )
+    columns_question_option.full_clean()
+    columns_question_option.save()
+
+
 def create_nested_question(
     *, form: SurveyForm, question_element: dict, parent_question: Question
 ) -> Question:
@@ -331,6 +369,18 @@ def create_nested_question(
             nested_question_elements=nested_elements,
         )
 
+    elif question_type == "matrix":
+        rows = question_element.get("rows")
+        columns = question_element.get("columns")
+        question = create_matrix_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            parent_question=parent_question,
+            rows=rows,
+            columns=columns,
+        )
+
     return question
 
 
@@ -388,7 +438,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
             # multipletext -> Done
             # panel -> Done
             # paneldynamic -> Done
-            # matrix
+            # matrix -> Done
             # matrixdropdown
             # matrixdynamic
             # html -> Done
@@ -493,4 +543,16 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     question_type=question_type,
                     question_title=question_title,
                     nested_question_elements=nested_elements,
+                )
+
+            elif question_type == "matrix":
+                rows = question_element.get("rows")
+                columns = question_element.get("columns")
+
+                create_matrix_question(
+                    form=form,
+                    question_name=question_name,
+                    question_title=question_title,
+                    rows=rows,
+                    columns=columns,
                 )
