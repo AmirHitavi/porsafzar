@@ -26,8 +26,16 @@ class IsManagementOrProfessorOrAdmin(BasePermission):
 class IsOwnerOrAdmin(BasePermission):
     def has_object_permission(self, request, view, obj):
 
-        return bool(
-            request.user == obj.created_by
-            or request.user.is_staff
-            or request.user.is_superuser
-        )
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+
+        if hasattr(obj, "created_by") and request.user == obj.created_by:
+            return True
+
+        if hasattr(obj, "parent") and request.user == obj.parent.created_by:
+            return True
+
+        if hasattr(obj, "form") and request.user == obj.form.parent.created_by:
+            return True
+
+        return False
