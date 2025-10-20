@@ -147,6 +147,35 @@ def create_rating_question(
     return question
 
 
+def create_image_picker_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_title: Optional[str] = None,
+    choices: list | None = None
+) -> Question:
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.IMAGEPICKER,
+        title=question_title,
+    )
+    question.save()
+
+    if choices is not None:
+        for choice in choices:
+            question_option = QuestionOptions(
+                question=question,
+                type=QuestionOptions.OptionType.IMAGE,
+                value=choice.get("value"),
+                image_value=choice.get("imageLink")
+            )
+            question_option.full_clean()
+            question_option.save()
+
+    return question
+
+
 def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
     for page in pages:
         questions_elements = page.get("elements")
@@ -163,7 +192,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
             # tagbox -> Done
             # boolean -> Done
             # file -> Done
-            # imagepicker
+            # imagepicker -> Done
             # ranking -> Done
             # text -> Done
             # comment -> Done
@@ -235,4 +264,14 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     question_title=question_title,
                     choices=choices,
                     rate_count=rate_count,
+                )
+
+            if question_type == "imagepicker":
+                choices = question_element.get("choices", None)
+
+                create_image_picker_question(
+                    form=form,
+                    question_name=question_name,
+                    question_title=question_title,
+                    choices=choices,
                 )
