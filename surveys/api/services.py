@@ -168,10 +168,41 @@ def create_image_picker_question(
                 question=question,
                 type=QuestionOptions.OptionType.IMAGE,
                 value=choice.get("value"),
-                image_value=choice.get("imageLink")
+                image_value=choice.get("imageLink"),
             )
             question_option.full_clean()
             question_option.save()
+
+    return question
+
+
+def create_multiple_text_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    nested_question_items: list[dict],
+    question_title: Optional[str] = None
+) -> Question:
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.MULTIPLETEXT,
+        title=question_title,
+    )
+    question.save()
+
+    for nested_item in nested_question_items:
+        nested_question_name = nested_item.get("name")
+        nested_question_title = nested_item.get("title", None)
+
+        nested_question = Question(
+            survey=form,
+            name=nested_question_name,
+            type=Question.QuestionType.TEXT,
+            title=nested_question_title,
+            parent=question,
+        )
+        nested_question.save()
 
     return question
 
@@ -196,7 +227,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
             # ranking -> Done
             # text -> Done
             # comment -> Done
-            # multipletext
+            # multipletext -> Done
             # panel
             # paneldynamic
             # matrix
@@ -274,4 +305,14 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     question_name=question_name,
                     question_title=question_title,
                     choices=choices,
+                )
+
+            if question_type == "multipletext":
+                nested_question_items = question_element.get("items")
+
+                create_multiple_text_question(
+                    form=form,
+                    question_name=question_name,
+                    question_title=question_title,
+                    nested_question_items=nested_question_items,
                 )

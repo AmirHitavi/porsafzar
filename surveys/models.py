@@ -290,7 +290,7 @@ class Question(BaseModel):
         verbose_name = _("سوال")
         verbose_name_plural = _("سوالات")
         ordering = ["-created_at"]
-        unique_together = ["survey", "name"]
+        unique_together = ["survey", "name", "parent"]
 
     def __str__(self):
         return f"{self.survey} ({self.name})"
