@@ -16,6 +16,24 @@ class SurveySerializer(serializers.ModelSerializer):
 
         read_only_fields = ["uuid", "deleted_at"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if hasattr(self, "context") and self.context.get("action"):
+            action = self.context.get("action")
+
+            if action == "list" or action == "retrieve":
+                self.fields.pop("deleted_at")
+
+            elif action == "partial_update":
+                allowed_fields = {"title"}
+
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)
+
+            elif action in ["soft_delete", "revoke_delete"]:
+                self.fields.clear()
+
 
 class SurveyFormSerializer(serializers.ModelSerializer):
     parent = serializers.UUIDField(source="parent.uuid", read_only=True)
