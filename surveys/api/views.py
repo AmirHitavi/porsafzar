@@ -1,17 +1,21 @@
-from xmlrpc.client import Fault
-
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.mixins import RetrieveModelMixin, UpdateModelMixin
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
-from ..models import Survey, SurveyForm
+from ..models import Survey, SurveyForm, SurveyFormSettings
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
-from .serializers import CreateSurveySerializer, SurveyFormSerializer, SurveySerializer
+from .serializers import (
+    CreateSurveySerializer,
+    SurveyFormSerializer,
+    SurveyFormSettingsSerializer,
+    SurveySerializer,
+)
 from .services import create_questions, create_survey, create_survey_form
 
 
@@ -246,3 +250,10 @@ class SurveyFormViewSet(ModelViewSet):
             return Response(
                 {"detail": _("فرم یافت نشد")}, status=status.HTTP_404_NOT_FOUND
             )
+
+
+class SurveyFormSettings(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
+    serializer_class = SurveyFormSettingsSerializer
+    queryset = SurveyFormSettings.objects.all()
+    http_method_names = ["get", "patch"]
+    permission_classes = [IsOwnerOrAdmin]

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ..models import Survey, SurveyForm
+from ..models import Survey, SurveyForm, SurveyFormSettings
 
 
 class CreateSurveySerializer(serializers.Serializer):
@@ -43,3 +43,16 @@ class SurveyFormSerializer(serializers.ModelSerializer):
         fields = ["uuid", "version", "description", "metadata", "parent", "deleted_at"]
 
         read_only_fields = ["uuid", "parent", "deleted_at"]
+
+
+class SurveyFormSettingsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = SurveyFormSettings
+        fields = [
+            "is_active",
+            "start_date",
+            "end_date",
+            "max_submissions_per_user",
+            "is_editable",
+        ]
