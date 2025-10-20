@@ -20,7 +20,8 @@ def create_simple_question(
     form: SurveyForm,
     question_name: str,
     question_type,
-    question_title: Optional[str] = None
+    question_title: Optional[str] = None,
+    parent_question: Optional[Question] = None,
 ) -> Question:
 
     question = Question(
@@ -28,6 +29,7 @@ def create_simple_question(
         name=question_name,
         type=Question.QuestionType[question_type.upper()],
         title=question_title,
+        parent=parent_question,
     )
     question.full_clean()
     question.save()
@@ -40,13 +42,15 @@ def create_question_with_text_options(
     question_name: str,
     question_type: str,
     question_title: Optional[str] = None,
-    choices: list[str | dict]
+    choices: list[str | dict],
+    parent_question: Optional[Question] = None,
 ) -> Question:
     question = Question(
         survey=form,
         name=question_name,
         type=Question.QuestionType[question_type.upper()],
         title=question_title,
+        parent=parent_question,
     )
     question.save()
 
@@ -83,8 +87,9 @@ def create_boolean_question(
     *,
     form: SurveyForm,
     question_name: str,
+    choices: list,
     question_title: Optional[str] = None,
-    choices: list
+    parent_question: Optional[Question] = None,
 ) -> Question:
 
     question = Question(
@@ -92,6 +97,7 @@ def create_boolean_question(
         name=question_name,
         type=Question.QuestionType.BOOLEAN,
         title=question_title,
+        parent=parent_question,
     )
     question.save()
 
@@ -114,13 +120,15 @@ def create_rating_question(
     question_name: str,
     question_title: Optional[str] = None,
     choices: Optional[list] = None,
-    rate_count: Optional[int]
+    rate_count: Optional[int],
+    parent_question: Optional[Question] = None,
 ) -> Question:
     question = Question(
         survey=form,
         name=question_name,
         type=Question.QuestionType.RATING,
         title=question_title,
+        parent=parent_question,
     )
     question.save()
 
@@ -152,13 +160,15 @@ def create_image_picker_question(
     form: SurveyForm,
     question_name: str,
     question_title: Optional[str] = None,
-    choices: list | None = None
+    choices: list | None = None,
+    parent_question: Optional[Question] = None,
 ) -> Question:
     question = Question(
         survey=form,
         name=question_name,
         type=Question.QuestionType.IMAGEPICKER,
         title=question_title,
+        parent=parent_question,
     )
     question.save()
 
@@ -181,13 +191,15 @@ def create_multiple_text_question(
     form: SurveyForm,
     question_name: str,
     nested_question_items: list[dict],
-    question_title: Optional[str] = None
+    question_title: Optional[str] = None,
+    parent_question: Optional[Question] = None,
 ) -> Question:
     question = Question(
         survey=form,
         name=question_name,
         type=Question.QuestionType.MULTIPLETEXT,
         title=question_title,
+        parent=parent_question,
     )
     question.save()
 
@@ -205,6 +217,152 @@ def create_multiple_text_question(
         nested_question.save()
 
     return question
+
+
+def create_nested_question(
+    *, form: SurveyForm, question_element: dict, parent_question: Question
+) -> Question:
+    question_type = question_element.get("type")
+    question_name = question_element.get("name")
+    question_title = question_element.get("title", None)
+
+    if question_type in [
+        "text",
+        "comment",
+        "signaturepad",
+        "expression",
+        "html",
+        "image",
+        "slider",
+        "file",
+    ]:
+        question = create_simple_question(
+            form=form,
+            question_name=question_name,
+            question_type=question_type,
+            question_title=question_title,
+            parent_question=parent_question,
+        )
+
+    elif question_type in [
+        "radiogroup",
+        "ranking",
+        "checkbox",
+        "dropdown",
+        "tagbox",
+    ]:
+        choices = question_element.get("choices")
+        question = create_question_with_text_options(
+            form=form,
+            question_name=question_name,
+            question_type=question_type,
+            question_title=question_title,
+            choices=choices,
+            parent_question=parent_question,
+        )
+    elif question_type == "boolean":
+
+        choices = {
+            "labelTrue": question_element.get("labelTrue", "Yes"),
+            "labelFalse": question_element.get("labelFalse", "No"),
+        }
+
+        question = create_boolean_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            choices=choices,
+            parent_question=parent_question,
+        )
+
+    elif question_type == "rating":
+        choices = question_element.get("rateValues", None)
+        rate_count = question_element.get("rateCount", None)
+
+        question = create_rating_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            choices=choices,
+            rate_count=rate_count,
+            parent_question=parent_question,
+        )
+
+    elif question_type == "imagepicker":
+        choices = question_element.get("choices", None)
+
+        question = create_image_picker_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            choices=choices,
+            parent_question=parent_question,
+        )
+
+    elif question_type == "multipletext":
+        nested_question_items = question_element.get("items")
+
+        question = create_multiple_text_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            nested_question_items=nested_question_items,
+            parent_question=parent_question,
+        )
+
+    elif question_type == "panel":
+        nested_elements = question_element.get("elements")
+        question = create_panel_question(
+            form=form,
+            question_name=question_name,
+            question_type=question_type,
+            question_title=question_title,
+            nested_question_elements=nested_elements,
+            parent_question=parent_question,
+        )
+
+    elif question_type == "paneldynamic":
+        nested_elements = question_element.get("templateElements")
+        question = create_panel_question(
+            form=form,
+            question_name=question_name,
+            question_type=question_type,
+            question_title=question_title,
+            nested_question_elements=nested_elements,
+        )
+
+    return question
+
+
+def create_panel_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_type: str,
+    question_title: Optional[str] = None,
+    nested_question_elements: list[dict] | None = None,
+    parent_question: Optional[Question] = None,
+) -> Question:
+
+    root_panel_question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType[question_type.upper()],
+        title=question_title,
+        parent=parent_question,
+    )
+    root_panel_question.save()
+
+    if nested_question_elements is not None:
+        for nested_element in nested_question_elements:
+
+            create_nested_question(
+                form=form,
+                question_element=nested_element,
+                parent_question=root_panel_question,
+            )
+
+    return root_panel_question
 
 
 def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
@@ -228,8 +386,8 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
             # text -> Done
             # comment -> Done
             # multipletext -> Done
-            # panel
-            # paneldynamic
+            # panel -> Done
+            # paneldynamic -> Done
             # matrix
             # matrixdropdown
             # matrixdynamic
@@ -255,7 +413,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     question_title=question_title,
                 )
 
-            if question_type in [
+            elif question_type in [
                 "radiogroup",
                 "ranking",
                 "checkbox",
@@ -271,7 +429,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     choices=choices,
                 )
 
-            if question_type == "boolean":
+            elif question_type == "boolean":
 
                 choices = {
                     "labelTrue": question_element.get("labelTrue", "Yes"),
@@ -285,7 +443,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     choices=choices,
                 )
 
-            if question_type == "rating":
+            elif question_type == "rating":
                 choices = question_element.get("rateValues", None)
                 rate_count = question_element.get("rateCount", None)
 
@@ -297,7 +455,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     rate_count=rate_count,
                 )
 
-            if question_type == "imagepicker":
+            elif question_type == "imagepicker":
                 choices = question_element.get("choices", None)
 
                 create_image_picker_question(
@@ -307,7 +465,7 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     choices=choices,
                 )
 
-            if question_type == "multipletext":
+            elif question_type == "multipletext":
                 nested_question_items = question_element.get("items")
 
                 create_multiple_text_question(
@@ -315,4 +473,24 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     question_name=question_name,
                     question_title=question_title,
                     nested_question_items=nested_question_items,
+                )
+
+            elif question_type == "panel":
+                nested_elements = question_element.get("elements")
+                create_panel_question(
+                    form=form,
+                    question_name=question_name,
+                    question_type=question_type,
+                    question_title=question_title,
+                    nested_question_elements=nested_elements,
+                )
+
+            elif question_type == "paneldynamic":
+                nested_elements = question_element.get("templateElements")
+                create_panel_question(
+                    form=form,
+                    question_name=question_name,
+                    question_type=question_type,
+                    question_title=question_title,
+                    nested_question_elements=nested_elements,
                 )
