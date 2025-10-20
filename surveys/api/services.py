@@ -1,4 +1,3 @@
-import json
 from typing import Optional
 
 from django.contrib.auth import get_user_model
@@ -250,16 +249,107 @@ def create_matrix_question(
     columns_question_option = QuestionOptions(
         question=question,
         type=QuestionOptions.OptionType.JSON,
-        value=f"matrix_columns",
+        value="matrix_columns",
         json_value=columns,
     )
     columns_question_option.full_clean()
     columns_question_option.save()
 
 
+def create_multi_select_matrix_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_title: Optional[str] = None,
+    parent_question: Optional[Question] = None,
+    rows: list[dict],
+    columns: list[dict],
+    choices: list[int],
+) -> Question:
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.MATRIXDROPDOWN,
+        title=question_title,
+        parent=parent_question,
+    )
+    question.save()
+
+    rows_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value="matrix_rows",
+        json_value=rows,
+    )
+    rows_question_option.full_clean()
+    rows_question_option.save()
+
+    choices_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value="matrix_choices",
+        json_value=choices,
+    )
+
+    choices_question_option.full_clean()
+    choices_question_option.save()
+
+    columns_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value="matrix_columns",
+        json_value=columns,
+    )
+    columns_question_option.full_clean()
+    columns_question_option.save()
+
+    return question
+
+
+def create_matrix_dynamic_question(
+    *,
+    form: SurveyForm,
+    question_name: str,
+    question_title: Optional[str] = None,
+    parent_question: Optional[Question] = None,
+    columns: list[dict],
+    choices: list[int],
+) -> Question:
+    question = Question(
+        survey=form,
+        name=question_name,
+        type=Question.QuestionType.MATRIXDYNAMIC,
+        title=question_title,
+        parent=parent_question,
+    )
+    question.save()
+
+    choices_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value="matrix_choices",
+        json_value=choices,
+    )
+
+    choices_question_option.full_clean()
+    choices_question_option.save()
+
+    columns_question_option = QuestionOptions(
+        question=question,
+        type=QuestionOptions.OptionType.JSON,
+        value="matrix_columns",
+        json_value=columns,
+    )
+    columns_question_option.full_clean()
+    columns_question_option.save()
+
+    return question
+
+
 def create_nested_question(
     *, form: SurveyForm, question_element: dict, parent_question: Question
 ) -> Question:
+
     question_type = question_element.get("type")
     question_name = question_element.get("name")
     question_title = question_element.get("title", None)
@@ -367,6 +457,7 @@ def create_nested_question(
             question_type=question_type,
             question_title=question_title,
             nested_question_elements=nested_elements,
+            parent_question=parent_question,
         )
 
     elif question_type == "matrix":
@@ -379,6 +470,34 @@ def create_nested_question(
             parent_question=parent_question,
             rows=rows,
             columns=columns,
+        )
+
+    elif question_type == "matrixdropdown":
+        rows = question_element.get("rows")
+        columns = question_element.get("columns")
+        choices = question_element.get("choices")
+
+        question = create_multi_select_matrix_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            parent_question=parent_question,
+            rows=rows,
+            columns=columns,
+            choices=choices,
+        )
+
+    elif question_type == "matrixdynamic":
+        columns = question_element.get("columns")
+        choices = question_element.get("choices")
+
+        question = create_matrix_dynamic_question(
+            form=form,
+            question_name=question_name,
+            question_title=question_title,
+            parent_question=parent_question,
+            columns=columns,
+            choices=choices,
         )
 
     return question
@@ -422,29 +541,6 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
             question_type = question_element.get("type")
             question_name = question_element.get("name")
             question_title = question_element.get("title", None)
-
-            # radiogroup -> Done
-            # rating -> Done
-            # slider -> Done
-            # checkbox -> Done
-            # dropdown -> Done
-            # tagbox -> Done
-            # boolean -> Done
-            # file -> Done
-            # imagepicker -> Done
-            # ranking -> Done
-            # text -> Done
-            # comment -> Done
-            # multipletext -> Done
-            # panel -> Done
-            # paneldynamic -> Done
-            # matrix -> Done
-            # matrixdropdown
-            # matrixdynamic
-            # html -> Done
-            # expression -> Done
-            # image -> Done
-            # signaturepad -> Done
 
             if question_type in [
                 "text",
@@ -555,4 +651,30 @@ def create_questions(*, form: SurveyForm, pages: list[dict]) -> None:
                     question_title=question_title,
                     rows=rows,
                     columns=columns,
+                )
+
+            elif question_type == "matrixdropdown":
+                rows = question_element.get("rows")
+                columns = question_element.get("columns")
+                choices = question_element.get("choices")
+
+                create_multi_select_matrix_question(
+                    form=form,
+                    question_name=question_name,
+                    question_title=question_title,
+                    rows=rows,
+                    columns=columns,
+                    choices=choices,
+                )
+
+            elif question_type == "matrixdynamic":
+                columns = question_element.get("columns")
+                choices = question_element.get("choices")
+
+                create_matrix_dynamic_question(
+                    form=form,
+                    question_name=question_name,
+                    question_title=question_title,
+                    columns=columns,
+                    choices=choices,
                 )
