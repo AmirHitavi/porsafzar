@@ -14,10 +14,17 @@ class SurveyFormSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SurveyForm
-        fields = ["uuid", "version", "description", "metadata", "parent", "created_at", "deleted_at"]
+        fields = [
+            "uuid",
+            "version",
+            "description",
+            "metadata",
+            "parent",
+            "created_at",
+            "deleted_at",
+        ]
 
         read_only_fields = ["uuid", "parent", "created_at", "deleted_at"]
-
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,7 +52,6 @@ class SurveyFormSerializer(serializers.ModelSerializer):
 
             elif action == ["soft_delete", "revoke_delete"]:
                 self.fields.clear()
-
 
     def get_created_at(self, obj: Survey):
         return obj.created_at.strftime("%Y-%m-%d: %H:%M:%S")
@@ -81,7 +87,6 @@ class SurveySerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-
         if hasattr(self, "context") and self.context.get("action"):
             action = self.context.get("action")
 
@@ -116,7 +121,6 @@ class SurveySerializer(serializers.ModelSerializer):
     def get_deleted_at(self, obj: Survey):
         if obj.deleted_at:
             return obj.deleted_at.strftime("%Y-%m-%d: %H:%M:%S")
-
 
 
 class SurveyFormSettingsSerializer(serializers.ModelSerializer):

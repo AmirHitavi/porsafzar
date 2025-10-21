@@ -80,9 +80,8 @@ class Answer(BaseUpdateModel):
     numeric_value = models.IntegerField(
         verbose_name=_("مقدار عددی"), null=True, blank=True
     )
-    file_value = models.FileField(
+    file_value = models.TextField(
         verbose_name=_("فایل"),
-        upload_to="submissions/answers/file/",
         null=True,
         blank=True,
     )

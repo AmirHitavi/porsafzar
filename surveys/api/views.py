@@ -252,7 +252,7 @@ class SurveyFormViewSet(ModelViewSet):
             )
 
 
-class SurveyFormSettings(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
+class SurveyFormSettingsViewSet(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
     serializer_class = SurveyFormSettingsSerializer
     queryset = SurveyFormSettings.objects.all()
     http_method_names = ["get", "patch"]
