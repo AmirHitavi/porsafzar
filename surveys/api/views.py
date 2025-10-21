@@ -89,8 +89,9 @@ class SurveyViewSet(ModelViewSet):
 
                 forms = survey.forms.all()
                 for form in forms:
-                    form.deleted_at = soft_delete_time
-                    form.save()
+                    if form.deleted_at is None:
+                        form.deleted_at = soft_delete_time
+                        form.save()
 
                 return Response(
                     {"detail": _("نظرسنجی حدف شد.")}, status=status.HTTP_200_OK
@@ -108,13 +109,15 @@ class SurveyViewSet(ModelViewSet):
                 survey = Survey.objects.get(
                     uuid=kwargs["uuid"], deleted_at__isnull=False
                 )
+                survey_delete_time = survey.deleted_at
                 survey.deleted_at = None
                 survey.save()
 
                 forms = survey.forms.all()
                 for form in forms:
-                    form.deleted_at = None
-                    form.save()
+                    if form.deleted_at == survey_delete_time:
+                        form.deleted_at = None
+                        form.save()
 
                 return Response(
                     {"detail": _("نظرسنجی بایگانی شد.")}, status=status.HTTP_200_OK
