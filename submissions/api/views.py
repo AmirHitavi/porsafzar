@@ -1,3 +1,7 @@
+from xmlrpc.client import Fault
+
+from django.db import transaction
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
@@ -37,39 +41,117 @@ class AnswerSetViewSet(ModelViewSet):
         else:
             user = None
 
-        answerset = create_answerset(
-            user=user,
-            survey_form=active_version,
-            metadata=metadata,
-        )
-
-        for question_name, answer_value in metadata.items():
-            create_answer(
-                answer_set=answerset,
-                question_name=question_name,
-                answer_value=answer_value,
+        with transaction.atomic():
+            answerset = create_answerset(
+                user=user,
+                survey_form=active_version,
+                metadata=metadata,
             )
 
-        return Response(
-            {"message": _("نظر شما ثبت شد")}, status=status.HTTP_201_CREATED
-        )
+            for question_name, answer_value in metadata.items():
+                create_answer(
+                    answer_set=answerset,
+                    question_name=question_name,
+                    answer_value=answer_value,
+                )
+
+            return Response(
+                {"message": _("نظر شما ثبت شد")}, status=status.HTTP_201_CREATED
+            )
 
     def update(self, request, *args, **kwargs):
-        answer_set = self.get_object()
-        answer_set.answers.all().delete()
+        try:
+            answer_set = self.get_object()
+            answer_set.answers.all().delete()
 
-        serializer = self.get_serializer(answer_set, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        metadata = serializer.validated_data.get("metadata")
-        answerset = serializer.save()
+            serializer = self.get_serializer(answer_set, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            metadata = serializer.validated_data.get("metadata")
 
-        for question_name, answer_value in metadata.items():
-            create_answer(
-                answer_set=answerset,
-                question_name=question_name,
-                answer_value=answer_value,
+            with transaction.atomic():
+
+                answerset = serializer.save()
+
+                for question_name, answer_value in metadata.items():
+                    create_answer(
+                        answer_set=answerset,
+                        question_name=question_name,
+                        answer_value=answer_value,
+                    )
+
+                return Response(
+                    {"message": _("نظر شما بروزرسانی شد")},
+                    status=status.HTTP_201_CREATED,
+                )
+        except AnswerSet.DoesNotExist:
+            return Response(
+                {"message": _("چنین جوابی وجود ندارد.")}, status=status.HTTP_201_CREATED
             )
 
-        return Response(
-            {"message": _("نظر شما بروزرسانی شد")}, status=status.HTTP_201_CREATED
+    @action(detail=True, methods=["post"])
+    def soft_delete(self, request, *args, **kwargs):
+        try:
+            answerset = self.get_object()
+
+            delete_time = timezone.now()
+
+            with transaction.atomic():
+                answerset.deleted_at = delete_time
+                answerset.save()
+
+                for answer in answerset.answers.all():
+                    if answer.deleted_at is None:
+                        answer.deleted_at = delete_time
+                        answer.save()
+
+            return Response(
+                {"detail": _("جواب پرسش نامه حدف شد.")}, status=status.HTTP_200_OK
+            )
+        except AnswerSet.DoesNotExist:
+            return Response(
+                {"detail": _("جوابی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=["post"])
+    def revoke_delete(self, request, *args, **kwargs):
+        try:
+            answerset = AnswerSet.objects.get(uuid=kwargs["uuid"])
+
+            answerset_delete_time = answerset.deleted_at
+
+            with transaction.atomic():
+                answerset.deleted_at = None
+                answerset.save()
+
+                for answer in answerset.answers.all():
+                    if answer.deleted_at == answerset_delete_time:
+                        answer.deleted_at = None
+                        answer.save()
+                return Response(
+                    {"detail": _("جواب پرسش نامه بازیابی شد.")},
+                    status=status.HTTP_200_OK,
+                )
+        except AnswerSet.DoesNotExist:
+            return Response(
+                {"detail": _("جوابی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=["get"], url_path="archived")
+    def list_deleted(self, request, *args, **kwargs):
+        queryset = AnswerSet.objects.filter(
+            deleted_at__isnull=False,
+            survey_form=Survey.objects.get(uuid=kwargs["survey_uuid"]).active_version,
         )
+
+        if not queryset:
+            return Response(
+                {"detail": _("جواب بایگانی شده ای وجود ندارد.")},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
