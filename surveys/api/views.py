@@ -120,7 +120,7 @@ class SurveyViewSet(ModelViewSet):
                         form.save()
 
                 return Response(
-                    {"detail": _("نظرسنجی بایگانی شد.")}, status=status.HTTP_200_OK
+                    {"detail": _("نظرسنجی بازیابی شد.")}, status=status.HTTP_200_OK
                 )
         except Survey.DoesNotExist:
             return Response(
@@ -253,6 +253,13 @@ class SurveyFormViewSet(ModelViewSet):
             return Response(
                 {"detail": _("فرم یافت نشد")}, status=status.HTTP_404_NOT_FOUND
             )
+
+    @action(detail=True, methods=["post"], url_path="activate")
+    def activate_form(self, request, *args, **kwargs):
+        form = self.get_object()
+        form.is_active = True
+        form.save()
+        return Response({"detail": _("این نسخه به عنوان نسخه فعال تنظیم شد.")})
 
 
 class SurveyFormSettingsViewSet(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
