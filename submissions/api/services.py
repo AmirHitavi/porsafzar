@@ -34,7 +34,7 @@ def create_answer(
         answer = Answer(
             answer_set=answer_set,
             question=question,
-            qustion_type=question.type,
+            question_type=question.type,
             answer_type=Answer.AnswerType.TEXT,
             text_value=answer_value,
         )
@@ -43,7 +43,7 @@ def create_answer(
         answer = Answer(
             answer_set=answer_set,
             question=question,
-            qustion_type=question.type,
+            question_type=question.type,
             answer_type=Answer.AnswerType.NUMERIC,
             numeric_value=answer_value,
         )
