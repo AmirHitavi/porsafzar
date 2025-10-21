@@ -22,24 +22,7 @@ class AnswerSetViewSet(ModelViewSet):
         context["action"] = self.action
         return context
 
-    # def _get_active_form(self, survey_uuid):
-    #     try:
-    #         survey = Survey.objects.get(uuid=survey_uuid)
-    #         active_version = survey.active_version
-    #         if active_version:
-    #             return active_version
-    #         return "Not active"
-    #     except Survey.DoesNotExist:
-    #         return "Not exists"
-
     def create(self, request, *args, **kwargs):
-        # active_version = self._get_active_form(kwargs["survey_uuid"])
-
-        # if not isinstance(active_version, SurveyForm):
-        #     return Response(
-        #         {"detail": active_version},
-        #         status=status.HTTP_404_NOT_FOUND,
-        #     )
 
         active_version = Survey.objects.get(uuid=kwargs["survey_uuid"]).active_version
 
@@ -69,4 +52,24 @@ class AnswerSetViewSet(ModelViewSet):
 
         return Response(
             {"message": _("نظر شما ثبت شد")}, status=status.HTTP_201_CREATED
+        )
+
+    def update(self, request, *args, **kwargs):
+        answer_set = self.get_object()
+        answer_set.answers.all().delete()
+
+        serializer = self.get_serializer(answer_set, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        metadata = serializer.validated_data.get("metadata")
+        answerset = serializer.save()
+
+        for question_name, answer_value in metadata.items():
+            create_answer(
+                answer_set=answerset,
+                question_name=question_name,
+                answer_value=answer_value,
+            )
+
+        return Response(
+            {"message": _("نظر شما بروزرسانی شد")}, status=status.HTTP_201_CREATED
         )
