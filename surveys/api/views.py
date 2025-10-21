@@ -27,7 +27,7 @@ class SurveyViewSet(ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "create":
-            CreateSurveySerializer
+            return CreateSurveySerializer
         return SurveySerializer
 
     def get_permissions(self):
