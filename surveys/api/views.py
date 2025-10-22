@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
+from submissions.models import AnswerSet
+
 from ..models import Survey, SurveyForm, SurveyFormSettings
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
 from .serializers import (
@@ -81,17 +83,40 @@ class SurveyViewSet(ModelViewSet):
     def soft_delete(self, request, *args, **kwargs):
         try:
             survey = self.get_object()
+            soft_delete_time = timezone.now()
 
             with transaction.atomic():
-                soft_delete_time = timezone.now()
                 survey.deleted_at = soft_delete_time
-                survey.save()
+                survey.save(update_fields=["deleted_at"])
 
-                forms = survey.forms.all()
+                forms = list(survey.forms.filter(deleted_at__isnull=True))
+
+                all_answer_sets = []
+                all_answers = []
+
                 for form in forms:
-                    if form.deleted_at is None:
-                        form.deleted_at = soft_delete_time
-                        form.save()
+                    form.deleted_at = soft_delete_time
+                    answer_sets = list(form.answer_sets.filter(deleted_at__isnull=True))
+                    for answer_set in answer_sets:
+                        answer_set.deleted_at = soft_delete_time
+                        answers = list(
+                            answer_set.answers.filter(deleted_at__isnull=True)
+                        )
+                        for answer in answers:
+                            answer.deleted_at = soft_delete_time
+                        all_answers.extend(answers)
+                    all_answer_sets.extend(answer_sets)
+
+                if all_answers:
+                    AnswerSet.answers.field.model.objects.bulk_update(
+                        all_answers, ["deleted_at"]
+                    )
+                if all_answer_sets:
+                    form.answer_sets.field.model.objects.bulk_update(
+                        all_answer_sets, ["deleted_at"]
+                    )
+                if forms:
+                    survey.forms.field.model.objects.bulk_update(forms, ["deleted_at"])
 
                 return Response(
                     {"detail": _("نظرسنجی حدف شد.")}, status=status.HTTP_200_OK
@@ -105,23 +130,46 @@ class SurveyViewSet(ModelViewSet):
     @action(detail=True, methods=["post"])
     def revoke_delete(self, request, *args, **kwargs):
         try:
+            survey = Survey.objects.get(uuid=kwargs["uuid"], deleted_at__isnull=False)
+            survey_delete_time = survey.deleted_at
             with transaction.atomic():
-                survey = Survey.objects.get(
-                    uuid=kwargs["uuid"], deleted_at__isnull=False
-                )
-                survey_delete_time = survey.deleted_at
                 survey.deleted_at = None
-                survey.save()
+                survey.save(update_fields=["deleted_at"])
 
-                forms = survey.forms.all()
+                forms = list(survey.forms.filter(deleted_at=survey_delete_time))
+
+                all_answer_sets = []
+                all_answers = []
+
                 for form in forms:
-                    if form.deleted_at == survey_delete_time:
-                        form.deleted_at = None
-                        form.save()
+                    form.deleted_at = None
+                    answer_sets = list(
+                        form.answer_sets.filter(deleted_at=survey_delete_time)
+                    )
+                    for answer_set in answer_sets:
+                        answer_set.deleted_at = None
+                        answers = list(
+                            answer_set.answers.filter(deleted_at=survey_delete_time)
+                        )
+                        for answer in answers:
+                            answer.deleted_at = None
+                        all_answers.extend(answers)
+                    all_answer_sets.extend(answer_sets)
 
-                return Response(
-                    {"detail": _("نظرسنجی بازیابی شد.")}, status=status.HTTP_200_OK
-                )
+                if forms:
+                    survey.forms.field.model.objects.bulk_update(forms, ["deleted_at"])
+                if all_answer_sets:
+                    form.answer_sets.field.model.objects.bulk_update(
+                        all_answer_sets, ["deleted_at"]
+                    )
+                if all_answers:
+                    AnswerSet.answers.field.model.objects.bulk_update(
+                        all_answers, ["deleted_at"]
+                    )
+
+            return Response(
+                {"detail": _("نظرسنجی بازیابی شد.")}, status=status.HTTP_200_OK
+            )
         except Survey.DoesNotExist:
             return Response(
                 {"detail": _("نظرسنجی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
@@ -232,9 +280,42 @@ class SurveyFormViewSet(ModelViewSet):
     def soft_delete(self, request, *args, **kwargs):
         try:
             form = self.get_object()
+            soft_delete_time = timezone.now()
+            settings = form.settings
+            survey = form.parent
 
-            form.deleted_at = timezone.now()
-            form.save()
+            with transaction.atomic():
+
+                form.deleted_at = soft_delete_time
+                form.save(update_fields=["deleted_at"])
+
+                if settings.is_active:
+                    settings.is_active = False
+                    settings.save(update_fields=["is_active"])
+
+                    survey.active_version = None
+                    survey.save(update_fields=["active_version"])
+
+                answer_sets = list(form.answer_sets.filter(deleted_at__isnull=True))
+                all_answers = []
+
+                for answer_set in answer_sets:
+                    answer_set.deleted_at = soft_delete_time
+                    answers = list(answer_set.answers.filter(deleted_at__isnull=True))
+                    for answer in answers:
+                        answer.deleted_at = soft_delete_time
+                    all_answers.extend(answers)
+
+                if all_answers:
+                    AnswerSet.answers.field.model.objects.bulk_update(
+                        all_answers, ["deleted_at"]
+                    )
+
+                if answer_sets:
+                    SurveyForm.answer_sets.field.model.objects.bulk_update(
+                        answer_sets, ["deleted_at"]
+                    )
+
             return Response({"detail": _("فرم حدف شد.")}, status=status.HTTP_200_OK)
 
         except SurveyForm.DoesNotExist:
@@ -246,8 +327,30 @@ class SurveyFormViewSet(ModelViewSet):
     def revoke_delete(self, request, *args, **kwargs):
         try:
             form = SurveyForm.objects.get(uuid=kwargs["uuid"], deleted_at__isnull=False)
-            form.deleted_at = None
-            form.save()
+            form_delete_time = form.deleted_at
+
+            with transaction.atomic():
+                answer_sets = list(form.answer_sets.filter(deleted_at=form_delete_time))
+                all_answers = []
+                for answer_set in answer_sets:
+                    answer_set.deleted_at = None
+                    answers = list(
+                        answer_set.answers.filter(deleted_at=form_delete_time)
+                    )
+                    for answer in answers:
+                        answer.deleted_at = None
+                    all_answers.extend(answers)
+
+                if all_answers:
+                    AnswerSet.answers.field.model.objects.bulk_update(
+                        all_answers, ["deleted_at"]
+                    )
+
+                if answer_sets:
+                    SurveyForm.answer_sets.field.model.objects.bulk_update(
+                        answer_sets, ["deleted_at"]
+                    )
+
             return Response({"detail": _("فرم بازیابی شد.")}, status=status.HTTP_200_OK)
         except SurveyForm.DoesNotExist:
             return Response(
