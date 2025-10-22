@@ -3,16 +3,17 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from surveys.models import Survey
 
 from ..models import AnswerSet
+from .permissions import IsOwner, IsSurveyOwnerOrAdmin, NotAllowed
 from .serializers import AnswerSetSerializer
 from .services import create_answer, create_answerset
-from .permissions import IsOwner, NotAllowed, IsSurveyOwnerOrAdmin
+
 
 class AnswerSetViewSet(ModelViewSet):
     serializer_class = AnswerSetSerializer
@@ -31,7 +32,9 @@ class AnswerSetViewSet(ModelViewSet):
         active_version = self.get_active_survey_form()
         if not active_version:
             return AnswerSet.objects.none()
-        return AnswerSet.objects.filter(survey_form=active_version, deleted_at__isnull=True)
+        return AnswerSet.objects.filter(
+            survey_form=active_version, deleted_at__isnull=True
+        )
 
     def get_permissions(self, *args, **kwargs):
         active_form = self.get_active_survey_form()
@@ -57,7 +60,6 @@ class AnswerSetViewSet(ModelViewSet):
         else:
             return [IsSurveyOwnerOrAdmin()]
 
-
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["action"] = self.action
@@ -68,8 +70,16 @@ class AnswerSetViewSet(ModelViewSet):
         active_form = self.get_active_survey_form()
 
         if not active_form:
-            return Response({"detail": _("پرسش‌نامه معتبر یافت نشد.")},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": _("پرسش‌نامه معتبر یافت نشد.")},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not active_form.settings.is_active:
+            return Response(
+                {"detail": _("پرسشنامه غیر فعال است و امکان ثبت جواب وجود ندارد")},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         max_responses_allowed = active_form.settings.max_submissions_per_user
         user = request.user if request.user.is_authenticated else None
@@ -82,8 +92,12 @@ class AnswerSetViewSet(ModelViewSet):
 
             if user_submissions >= max_responses_allowed:
                 return Response(
-                    {"detail": _(f"شما نمی توانید بیش از {max_responses_allowed} پاسخ ارسال کنید.")},
-                    status=status.HTTP_403_FORBIDDEN
+                    {
+                        "detail": _(
+                            f"شما نمی توانید بیش از {max_responses_allowed} پاسخ ارسال کنید."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
                 )
 
         serializer = self.get_serializer(data=request.data)
@@ -105,11 +119,26 @@ class AnswerSetViewSet(ModelViewSet):
                     answer_value=answer_value,
                 )
 
-            return Response(
-                {"message": _("نظر شما ثبت شد")}, status=status.HTTP_201_CREATED
-            )
+        return Response(
+            {"message": _("نظر شما ثبت شد")}, status=status.HTTP_201_CREATED
+        )
 
     def update(self, request, *args, **kwargs):
+
+        active_form = self.get_active_survey_form()
+
+        if not active_form:
+            return Response(
+                {"detail": _("پرسش‌نامه معتبر یافت نشد.")},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not active_form.settings.is_active:
+            return Response(
+                {"detail": _("پرسشنامه غیر فعال است و امکان ثبت جواب وجود ندارد")},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
 
             with transaction.atomic():
@@ -129,10 +158,10 @@ class AnswerSetViewSet(ModelViewSet):
                         answer_value=answer_value,
                     )
 
-                return Response(
-                    {"message": _("نظر شما بروزرسانی شد")},
-                    status=status.HTTP_201_CREATED,
-                )
+            return Response(
+                {"message": _("نظر شما بروزرسانی شد")},
+                status=status.HTTP_201_CREATED,
+            )
         except AnswerSet.DoesNotExist:
             return Response(
                 {"message": _("چنین جوابی وجود ندارد.")}, status=status.HTTP_201_CREATED
@@ -143,16 +172,20 @@ class AnswerSetViewSet(ModelViewSet):
         try:
             answerset = self.get_object()
 
-            delete_time = timezone.now()
+            soft_delete_time = timezone.now()
 
             with transaction.atomic():
-                answerset.deleted_at = delete_time
-                answerset.save()
+                answerset.deleted_at = soft_delete_time
+                answerset.save(update_fields=["deleted_at"])
 
-                for answer in answerset.answers.all():
-                    if answer.deleted_at is None:
-                        answer.deleted_at = delete_time
-                        answer.save()
+                # bulk_update
+                answers = list(answerset.answers.filter(deleted_at__isnull=True))
+                for answer in answers:
+                    answer.deleted_at = soft_delete_time
+
+                AnswerSet.answers.field.model.objects.bulk_update(
+                    answers, ["deleted_at"]
+                )
 
             return Response(
                 {"detail": _("جواب پرسش نامه حدف شد.")}, status=status.HTTP_200_OK
@@ -170,17 +203,25 @@ class AnswerSetViewSet(ModelViewSet):
             answerset_delete_time = answerset.deleted_at
 
             with transaction.atomic():
+
                 answerset.deleted_at = None
                 answerset.save()
 
-                for answer in answerset.answers.all():
-                    if answer.deleted_at == answerset_delete_time:
-                        answer.deleted_at = None
-                        answer.save()
-                return Response(
-                    {"detail": _("جواب پرسش نامه بازیابی شد.")},
-                    status=status.HTTP_200_OK,
+                answers = list(
+                    answerset.answers.filter(deleted_at=answerset_delete_time)
                 )
+
+                for answer in answers:
+                    answer.deleted_at = None
+
+                AnswerSet.answers.field.model.objects.bulk_update(
+                    answers, ["deleted_at"]
+                )
+
+            return Response(
+                {"detail": _("جواب پرسش نامه بازیابی شد.")},
+                status=status.HTTP_200_OK,
+            )
         except AnswerSet.DoesNotExist:
             return Response(
                 {"detail": _("جوابی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
@@ -190,8 +231,9 @@ class AnswerSetViewSet(ModelViewSet):
     def list_deleted(self, request, *args, **kwargs):
         active_form = self.get_active_survey_form()
         if not active_form:
-            return Response({"detail": _("فرم فعال یافت نشد.")},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": _("فرم فعال یافت نشد.")}, status=status.HTTP_404_NOT_FOUND
+            )
 
         queryset = AnswerSet.objects.filter(
             deleted_at__isnull=False,
