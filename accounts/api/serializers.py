@@ -46,6 +46,21 @@ class UserSerializer(serializers.ModelSerializer):
             if action == "logout":
                 self.fields.clear()
 
+            if (
+                action == "me"
+                and self.context.get("request")
+                and self.context["request"].method == "PATCH"
+            ):
+                allowed_fields = {"email", "birth_date"}
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)
+
+            if action == "partial_update" and self.context.get("request"):
+                self.fields["role"].read_only = False
+                self.fields["is_active"].read_only = False
+                self.fields["is_staff"].read_only = False
+                self.fields["is_superuser"].read_only = False
+
 
 class UserOTPSerializer(serializers.Serializer):
     phone_number = serializers.CharField(
