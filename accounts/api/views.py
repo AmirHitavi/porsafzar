@@ -282,7 +282,7 @@ class UserViewSet(ModelViewSet):
                 return self._error_response(
                     code=otp_response["code"],
                     message=otp_response["message"],
-                    data={"phone_number": phone_number, "user_id": user},
+                    errors={},
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
 
