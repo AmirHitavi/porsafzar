@@ -204,3 +204,88 @@ class TestUserCreation:
         assert response.status_code == 404
         assert response.data.get("code") == "USER_NOT_EXISTS"
         assert response.data.get("message") == "کاربری یافت نشد"
+
+
+@pytest.mark.django_db
+class TestUserUpdate:
+    view_name = "user-detail"
+
+    def test_update_if_superuser_valid_data_returns_200(self, api_client, superuser):
+        valid_data = {
+            "phone_number": generate_iranian_phone_number(),
+            "email": "test@gmail.com",
+            "role": 5,
+            "is_active": True,
+            "is_staff": True,
+            "is_superuser": True,
+        }
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.patch(
+            reverse(self.view_name, args=[superuser.id]), data=valid_data
+        )
+
+        assert response.status_code == 200
+        assert response.data.get("phone_number") == valid_data["phone_number"]
+        assert response.data.get("email") == valid_data["email"]
+        assert response.data.get("role") == valid_data["role"]
+        assert response.data.get("is_active") == valid_data["is_active"]
+        assert response.data.get("is_staff") == valid_data["is_staff"]
+        assert response.data.get("is_superuser") == valid_data["is_superuser"]
+
+    def test_update_if_not_super_user_returns_401(self, api_client, normal_user):
+        data = {}
+
+        response = api_client.patch(
+            reverse(self.view_name, args=[normal_user.id]), data=data
+        )
+
+        assert response.status_code == 401
+
+    def test_update_if_phone_number_duplicate_returns_400(
+        self, api_client, superuser, normal_user
+    ):
+        invalid_data = {
+            "phone_number": superuser.phone_number,
+        }
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.patch(
+            reverse(self.view_name, args=[normal_user.id]), data=invalid_data
+        )
+
+        assert response.status_code == 400
+
+    def test_update_if_email_duplicate_returns_400(
+        self, api_client, superuser, normal_user
+    ):
+        invalid_data = {
+            "email": superuser.email,
+        }
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.patch(
+            reverse(self.view_name, args=[normal_user.id]), data=invalid_data
+        )
+
+        assert response.status_code == 400
+        assert response.data.get("code") == "EMAIL_EXISTS"
+        assert response.data.get("message") == "کاربر با این ایمیل وجود دارد."
+
+    def test_update_if_user_not_exists_returns_404(
+        self, api_client, superuser, normal_user
+    ):
+        # delete normal user
+        user_id = normal_user.id
+        normal_user.delete()
+
+        data = {}
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.patch(reverse(self.view_name, args=[user_id]), data=data)
+
+        assert response.status_code == 404
