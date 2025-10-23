@@ -1,6 +1,7 @@
 import pytest
 from django.core.cache import cache
 from django.urls import reverse
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from conftest import api_client
 
@@ -444,3 +445,62 @@ class TestUserLogin:
         assert response.status_code == 404
         assert response.data.get("code") == "USER_NOT_EXISTS"
         assert response.data.get("message") == "کاربری یافت نشد"
+
+
+@pytest.mark.django_db
+class TestUserLogout:
+
+    url = reverse("user-logout")
+
+    def test_logout_if_data_valid_returns_200(self, api_client, normal_user):
+        data = {
+            "refresh": str(RefreshToken.for_user(normal_user)),
+        }
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.post(self.url, data=data)
+
+        assert response.status_code == 200
+        assert response.data.get("code") == "SUCCESS"
+        assert response.data.get("message") == "خروج موفقیت آمیز بود."
+
+    def test_logout_if_refresh_token_missing_returns_401(self, api_client, normal_user):
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.post(self.url, data={})
+
+        assert response.status_code == 401
+        assert response.data.get("code") == "REFRESH_TOKEN_NOT_EXISTS"
+        assert response.data.get("message") == "رفرش توکن ارسال نشده است."
+
+    def test_logout_if_refresh_token_invalid_returns_400(self, api_client, normal_user):
+        data = {"refresh": "invalid"}
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.post(self.url, data=data)
+
+        assert response.status_code == 400
+        assert response.data["error"] == "خطا در خروج"
+
+    def test_logout_if_user_not_authenticated_returns_401(self, api_client):
+
+        response = api_client.post(self.url, data={})
+
+        assert response.status_code == 401
+
+    def test_logout_if_refresh_token_already_blacklisted_returns_400(
+        self, api_client, normal_user
+    ):
+        refresh = RefreshToken.for_user(normal_user)
+        refresh.blacklist()
+
+        data = {"refresh": str(refresh)}
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.post(self.url, data=data)
+
+        assert response.status_code == 400
+        assert response.data["error"] == "خطا در خروج"
