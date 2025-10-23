@@ -439,17 +439,13 @@ class UserViewSet(ModelViewSet):
             serializer.is_valid(raise_exception=True)
 
             email = serializer.validated_data.get("email")
-            if email:
-                if user.email == email:
-                    pass
-
-                elif User.objects.filter(email=email).exists():
-                    return self._error_response(
-                        message=_("آدرس ایمیل دیگری را وارد کنید."),
-                        code="EMAIL_EXISTS",
-                        errors={"email": [_("کاربری با این آدرس ایمیل وجود دارد.")]},
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                    )
+            if email and User.objects.filter(email=email).exists():
+                return self._error_response(
+                    message=_("آدرس ایمیل دیگری را وارد کنید."),
+                    code="EMAIL_EXISTS",
+                    errors={"email": [_("کاربری با این آدرس ایمیل وجود دارد.")]},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
 
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)

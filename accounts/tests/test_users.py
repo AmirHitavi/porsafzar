@@ -1,10 +1,12 @@
 import pytest
 from django.core.cache import cache
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from conftest import api_client
 
+from ..models import User
 from ..utils import OTPHandler
 from .factories import UserFactory, generate_iranian_phone_number
 
@@ -504,3 +506,59 @@ class TestUserLogout:
 
         assert response.status_code == 400
         assert response.data["error"] == "خطا در خروج"
+
+
+@pytest.mark.django_db
+class TestUserMe:
+    url = reverse("user-me")
+
+    def test_me_get_if_user_authenticated_returns_200(self, api_client, normal_user):
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.get(self.url)
+
+        assert response.status_code == 200
+        assert response.data.get("phone_number") == normal_user.phone_number
+
+    def test_me_get_if_user_not_authenticated_returns_401(self, api_client):
+
+        response = api_client.get(self.url)
+
+        assert response.status_code == 401
+
+    def test_me_patch_if_data_valid_returns_200(self, api_client, normal_user):
+        data = {"email": "test@gmail.com", "birth_date": timezone.now().date()}
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.patch(self.url, data=data)
+
+        assert response.status_code == 200
+        assert response.data.get("email") == data.get("email")
+
+    def test_me_patch_if_data_invalid_returns_400(self, api_client, normal_user):
+        data = {"birth_date": timezone.now()}
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.patch(self.url, data=data)
+
+        assert response.status_code == 400
+
+    def test_me_patch_if_email_duplicate_returns_400(self, api_client, normal_user):
+        data = {"email": normal_user.email}
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.patch(self.url, data=data)
+
+        assert response.status_code == 400
+        assert response.data.get("code") == "EMAIL_EXISTS"
+        assert response.data.get("message") == "آدرس ایمیل دیگری را وارد کنید."
+
+    def test_me_patch_if_user_not_authenticated_returns_401(self, api_client):
+
+        response = api_client.patch(self.url, data={})
+
+        assert response.status_code == 401
