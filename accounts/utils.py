@@ -75,14 +75,3 @@ class OTPHandler:
             "message": "OTP expired or not found.",
             "code": "OTP_EXPIRED",
         }
-
-    @staticmethod
-    def get_status(phone_number):
-        hashed_phone = OTPHandler._get_hashed_phone(phone_number)
-
-        return {
-            "has_active_otp": cache.get(f"otp_{hashed_phone}") is not None,
-            "attempts_made": cache.get(f"otp_attempts_{hashed_phone}", 0),
-            "is_blocked": cache.get(f"otp_attempts_{hashed_phone}", 0)
-            >= OTPHandler.MAX_ATTEMPTS,
-        }

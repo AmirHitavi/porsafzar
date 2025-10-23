@@ -8,8 +8,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .permissions import IsStaffOrSuperUser
 from ..utils import OTPHandler
+from .permissions import IsStaffOrSuperUser
 from .serializers import UserOTPSerializer, UserSerializer
 
 User = get_user_model()
@@ -41,6 +41,7 @@ class UserViewSet(ModelViewSet):
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
         return None
+
     def get_permissions(self):
         if self.action in [
             "create",
@@ -86,48 +87,39 @@ class UserViewSet(ModelViewSet):
         validated_data = serializer.validated_data
         phone_number = validated_data.get("phone_number")
         email = validated_data.get("email", None)
-        try:
-            if email is not None and User.objects.filter(email=email).exists():
-                return self._error_response(
-                    message=_("کاربر تکراری است."),
-                    code="EMAIL_EXISTS",
-                    errors={"email": [_("کاربری با این آدرس ایمیل وجود دارد.")]},
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
-            user = User.objects.create(is_active=False, **validated_data)
-            data = ({"phone_number": phone_number, "user_id": user.id},)
-
-            otp_response = OTPHandler.generate_otp(phone_number)
-
-            if otp_response["status"] == "success":
-                return self._success_response(
-                    code="success",
-                    message=_(
-                        "اکانت موفقیت آمیز ساخته شد. برای شماره تلفن شما کدی ارسال شده است."
-                    ),
-                    data=data,
-                    status_code=status.HTTP_201_CREATED,
-                )
-
-            else:
-                return self._error_response(
-                    code="failure",
-                    message=_(
-                        "اکانت موفقیت آمیز ساخته شد اما در ارسال کد به تلفن همراه شما به مشکل خوردیم."
-                        "لطفا دوباره تلاش بکنید."
-                    ),
-                    data=data,
-                    status_code=status.HTTP_201_CREATED,
-                )
-
-        except Exception:
+        if email is not None and User.objects.filter(email=email).exists():
             return self._error_response(
-                code="error",
-                message=_("مشکل در ساخت اکانت کاربری"),
-                errors={},
+                message=_("کاربر تکراری است."),
+                code="EMAIL_EXISTS",
+                errors={"email": [_("کاربری با این آدرس ایمیل وجود دارد.")]},
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+
+        user = User.objects.create(is_active=False, **validated_data)
+        data = ({"phone_number": phone_number, "user_id": user.id},)
+
+        otp_response = OTPHandler.generate_otp(phone_number)
+
+        if otp_response["status"] == "success":
+            return self._success_response(
+                code="success",
+                message=_(
+                    "اکانت موفقیت آمیز ساخته شد. برای شماره تلفن شما کدی ارسال شده است."
+                ),
+                data=data,
+                status_code=status.HTTP_201_CREATED,
+            )
+
+        # else:
+        #     return self._error_response(
+        #         code="failure",
+        #         message=_(
+        #             "اکانت موفقیت آمیز ساخته شد اما در ارسال کد به تلفن همراه شما به مشکل خوردیم."
+        #             "لطفا دوباره تلاش بکنید."
+        #         ),
+        #         data=data,
+        #         status_code=status.HTTP_201_CREATED,
+        #     )
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -147,7 +139,6 @@ class UserViewSet(ModelViewSet):
         serializer.save()
 
         return Response(serializer.data)
-
 
     @action(detail=False, methods=["post"], url_path="create/verify-otp")
     def register_verify_otp(self, request, *args, **kwargs):
