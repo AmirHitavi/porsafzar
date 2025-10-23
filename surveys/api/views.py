@@ -27,6 +27,19 @@ class SurveyViewSet(ModelViewSet):
     lookup_field = "uuid"
     http_method_names = ["get", "post", "patch", "delete"]
 
+    def _success_response(self, message, code, status_code, data=None):
+        return Response(
+            {"code": code, "message": message, "data": data or {}},
+            status=status_code,
+        )
+
+    def _error_response(self, message, code, status_code, errors=None):
+        return Response(
+            {"code": code, "message": message, "errors": errors or {}},
+            status=status_code,
+        )
+
+
     def get_serializer_class(self):
         if self.action == "create":
             return CreateSurveySerializer
@@ -75,8 +88,14 @@ class SurveyViewSet(ModelViewSet):
             pages = json_data.get("pages")
             create_questions(form=survey_form, pages=pages)
 
-        return Response(
-            {"detail": _("نظرسنجی با موفقیت ساخته شد")}, status=status.HTTP_201_CREATED
+        return self._success_response(
+            code="SUCCESS",
+            message= _("نظرسنجی با موفقیت ساخته شد"),
+            data={
+                "survey_uuid": survey.uuid,
+                "form_uuid": survey_form.uuid,
+            },
+            status_code=status.HTTP_201_CREATED
         )
 
     @action(detail=True, methods=["post"])
