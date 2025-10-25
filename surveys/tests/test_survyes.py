@@ -121,7 +121,7 @@ class TestSurveySoftDeleteOperation:
 
         assert response.status_code == 403
 
-    def test_soft_delete_if_already_deleted_returns_404(self, api_client):
+    def test_soft_delete_if_already_deleted_returns_400(self, api_client):
         survey = SurveyFactory(deleted_at=timezone.now())
         owner = survey.created_by
 

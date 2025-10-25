@@ -358,7 +358,20 @@ class SurveyFormViewSet(ModelViewSet):
     @action(detail=True, methods=["post"])
     def soft_delete(self, request, *args, **kwargs):
         try:
-            form = self.get_object()
+            survey_uuid = kwargs["survey_uuid"]
+            form_uuid = kwargs["uuid"]
+
+            form = SurveyForm.objects.get(parent__uuid=survey_uuid, uuid=form_uuid)
+            self.check_object_permissions(request, form)
+
+            if form.deleted_at is not None:
+                return self._error_response(
+                    code="FORM_ALREADY_DELETED",
+                    message=_("فرم نظرسنجی قبلا حدف شده است"),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
             soft_delete_time = timezone.now()
             settings = form.settings
             survey = form.parent
@@ -395,18 +408,39 @@ class SurveyFormViewSet(ModelViewSet):
                         answer_sets, ["deleted_at"]
                     )
 
-            return Response({"detail": _("فرم حدف شد.")}, status=status.HTTP_200_OK)
+            return self._success_response(
+                code="SUCCESS",
+                message=_("فرم حذف شد."),
+                data={},
+                status_code=status.HTTP_200_OK,
+            )
 
         except SurveyForm.DoesNotExist:
-            return Response(
-                {"detail": _("فرم یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            return self._error_response(
+                code="FORM_DOES_NOT_EXIST",
+                message=_("فرم یافت نشد"),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=True, methods=["post"])
     def revoke_delete(self, request, *args, **kwargs):
         try:
-            form = SurveyForm.objects.get(uuid=kwargs["uuid"], deleted_at__isnull=False)
+            survey_uuid = kwargs["survey_uuid"]
+            form_uuid = kwargs["uuid"]
+
+            form = SurveyForm.objects.get(parent__uuid=survey_uuid, uuid=form_uuid)
             form_delete_time = form.deleted_at
+
+            self.check_object_permissions(request, form)
+
+            if form_delete_time is None:
+                return self._error_response(
+                    code="FORM_NOT_DELETED",
+                    message=_("فرم نظرسنجی حدف نشده است"),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
 
             with transaction.atomic():
                 answer_sets = list(form.answer_sets.filter(deleted_at=form_delete_time))
@@ -429,20 +463,54 @@ class SurveyFormViewSet(ModelViewSet):
                     SurveyForm.answer_sets.field.model.objects.bulk_update(
                         answer_sets, ["deleted_at"]
                     )
+            return self._success_response(
+                code="SUCCESS",
+                message=_("فرم بازیابی شد."),
+                data={},
+                status_code=status.HTTP_200_OK,
+            )
 
-            return Response({"detail": _("فرم بازیابی شد.")}, status=status.HTTP_200_OK)
         except SurveyForm.DoesNotExist:
-            return Response(
-                {"detail": _("فرم یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            return self._error_response(
+                code="FORM_DOES_NOT_EXIST",
+                message=_("فرم یافت نشد"),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=True, methods=["post"], url_path="activate")
     def activate_form(self, request, *args, **kwargs):
-        form = self.get_object()
-        form.is_active = True
-        form.save()
-        return Response({"detail": _("این نسخه به عنوان نسخه فعال تنظیم شد.")})
+        try:
+            survey_uuid = kwargs["survey_uuid"]
+            form_uuid = kwargs["uuid"]
 
+            form = SurveyForm.objects.get(parent__uuid=survey_uuid, uuid=form_uuid)
+            self.check_object_permissions(request, form)
+
+            if form.settings.is_active:
+                return self._error_response(
+                    code="FORM_ALREADY_ACTIVATED",
+                    message=_("فرم قبلا فعال شده است."),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+            form.settings.is_active = True
+            form.save(update_fields=["is_active"])
+
+            return self._success_response(
+                code="SUCCESS",
+                message=_("فرم فعال شد"),
+                data={},
+                status_code=status.HTTP_200_OK,
+            )
+        except SurveyForm.DoesNotExist:
+            return self._error_response(
+                code="FORM_DOES_NOT_EXIST",
+                message=_("فرم یافت نشد"),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
 
 class SurveyFormSettingsViewSet(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
     serializer_class = SurveyFormSettingsSerializer
