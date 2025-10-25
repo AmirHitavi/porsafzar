@@ -301,3 +301,26 @@ class TestSurveySoftDeleteOperation:
         )
 
         assert response.status_code == 403
+
+
+@pytest.mark.django_db
+class TestSurveyList:
+    list_view_name = "survey-list"
+
+    def test_if_authenticated_returns_200(self, api_client, normal_user):
+        SurveyFactory.create_batch(10)
+        SurveyFactory.create_batch(10, deleted_at=timezone.now())
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.get(reverse(self.list_view_name))
+
+        assert response.status_code == 200
+        assert len(response.data) == 10
+
+    def test_if_not_authenticated_returns_401(self, api_client):
+        SurveyFactory.create_batch(10)
+
+        response = api_client.get(reverse(self.list_view_name))
+
+        assert response.status_code == 401
