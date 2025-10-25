@@ -1,14 +1,11 @@
-import json
 import os
 
 import pytest
-from django.urls import include, reverse
+from django.urls import reverse
 from django.utils import timezone
-from django_filters.conf import settings
 
 from config.env import BASE_DIR
 
-from ..models import SurveyForm
 from .factories import SurveyFactory, SurveyFormFactory
 
 
@@ -387,7 +384,7 @@ class TestSurveyFormActivation:
         second_form.settings.is_active = False
         second_form.settings.save()
 
-        assert second_form.settings.is_active == False
+        assert second_form.settings.is_active is False
 
         api_client.force_authenticate(user=superuser)
 
@@ -402,4 +399,43 @@ class TestSurveyFormActivation:
         second_form.refresh_from_db()
 
         assert survey.active_version == second_form
-        assert first_form.settings.is_active == False
+        assert first_form.settings.is_active is False
+
+
+@pytest.mark.django_db
+class TestSurveyFormList:
+    view_name = "survey-forms-list"
+
+    def test_get_list_if_allowed_user_returns_200(self, api_client, superuser, professor, management):
+        survey = SurveyFactory()
+        SurveyFormFactory.create_batch(10, parent=survey)
+
+        allowed_users = [superuser, professor, management]
+
+        for user in allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.get(reverse(self.view_name, args=[survey.uuid]))
+
+            assert response.status_code == 200
+            assert len(response.data) == 10
+
+    def test_get_list_if_not_allowed_returns_401(self, api_client, student, employee, personal):
+        survey = SurveyFactory()
+        SurveyFormFactory.create_batch(10, parent=survey)
+
+        not_allowed_users = [student, employee, personal]
+
+        for user in not_allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.get(reverse(self.view_name, args=[survey.uuid]))
+
+            assert response.status_code == 403
+
+    def test_get_list_if_user_not_authenticated_returns_401(self, api_client):
+        survey = SurveyFactory()
+
+        response = api_client.get(reverse(self.view_name, args=[survey.uuid]))
+
+        assert response.status_code == 401

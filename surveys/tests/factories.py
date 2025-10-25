@@ -3,8 +3,7 @@ from faker import Faker as FactoryFaker
 
 from accounts.tests.factories import UserFactory
 
-from .. import signals
-from ..models import Survey, SurveyForm, SurveyFormSettings
+from ..models import Survey, SurveyForm
 
 faker = FactoryFaker()
 

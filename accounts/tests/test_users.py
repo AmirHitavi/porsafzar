@@ -4,9 +4,6 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from conftest import api_client
-
-from ..models import User
 from ..utils import OTPHandler
 from .factories import UserFactory, generate_iranian_phone_number
 
@@ -117,9 +114,7 @@ class TestUserCreation:
 
     def test_verify_if_otp_wrong_returns_400(self, api_client):
         inactive_user = UserFactory(is_active=False)
-        phone_number = inactive_user.phone_number
         otp_code = 123456
-        otp_response = OTPHandler.verify_otp(phone_number, otp_code)
 
         data = {"phone_number": inactive_user.phone_number, "otp": otp_code}
 

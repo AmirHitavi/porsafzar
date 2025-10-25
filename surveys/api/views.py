@@ -292,7 +292,7 @@ class SurveyFormViewSet(ModelViewSet):
         )
 
     def get_permissions(self):
-        if self.action in ["create"]:
+        if self.action in ["create", "list"]:
             return [IsManagementOrProfessorOrAdmin()]
         elif self.action in [
             "retrieve",
