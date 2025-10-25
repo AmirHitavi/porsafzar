@@ -1,5 +1,4 @@
 import os
-from http.client import responses
 
 import pytest
 from django.urls import reverse

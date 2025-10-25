@@ -279,10 +279,22 @@ class SurveyFormViewSet(ModelViewSet):
     lookup_field = "uuid"
     http_method_names = ["get", "options", "head", "post", "delete"]
 
+    def _success_response(self, message, code, status_code, data=None):
+        return Response(
+            {"code": code, "message": message, "data": data or {}},
+            status=status_code,
+        )
+
+    def _error_response(self, message, code, status_code, errors=None):
+        return Response(
+            {"code": code, "message": message, "errors": errors or {}},
+            status=status_code,
+        )
+
     def get_permissions(self):
         if self.action in ["create"]:
             return [IsManagementOrProfessorOrAdmin()]
-        elif self.action in ["delete", "soft_delete", "revoke_delete"]:
+        elif self.action in ["retrieve", "delete", "soft_delete", "revoke_delete"]:
             return [IsOwnerOrAdmin()]
         else:
             return [IsAuthenticated()]
@@ -327,15 +339,20 @@ class SurveyFormViewSet(ModelViewSet):
                 # create questions
                 pages = metadata.get("pages")
                 create_questions(form=survey_form, pages=pages)
-                return Response(
-                    {"detail": _("فرم پرسشنامه بروزرسانی شد.")},
-                    status=status.HTTP_201_CREATED,
+
+                return self._success_response(
+                    code="SUCCESS",
+                    message=_("فرم پرسشنامه بروزرسانی شد."),
+                    data={},
+                    status_code=status.HTTP_201_CREATED,
                 )
 
             except IntegrityError:
-                return Response(
-                    {"detail": _("فرم پرسشنامه با این شماره وجود دارد.")},
-                    status=status.HTTP_400_BAD_REQUEST,
+                return self._error_response(
+                    code="FORM_VERSION_EXISTS",
+                    message=_("فرم پرسشنامه با این شماره وجود دارد."),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
                 )
 
     @action(detail=True, methods=["post"])
