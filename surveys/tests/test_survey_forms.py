@@ -2,11 +2,13 @@ import json
 import os
 
 import pytest
-from django.urls import reverse
+from django.urls import include, reverse
 from django.utils import timezone
+from django_filters.conf import settings
 
 from config.env import BASE_DIR
 
+from ..models import SurveyForm
 from .factories import SurveyFactory, SurveyFormFactory
 
 
@@ -284,3 +286,120 @@ class TestSurveyFormSoftDeleteOperation:
         )
 
         assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestSurveyFormActivation:
+    view_name = "survey-forms-activate-form"
+
+    def test_if_admin_form_not_active_returns_200(self, api_client, superuser):
+        form = SurveyFormFactory()
+        form.settings.is_active = False
+        form.settings.save()
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid]),
+            data={},
+        )
+
+        assert response.status_code == 200
+        assert response.data.get("code") == "SUCCESS"
+        assert response.data.get("message") == "فرم فعال شد"
+
+    def test_if_owner_form_not_active_returns_200(self, api_client):
+        form = SurveyFormFactory()
+        form.settings.is_active = False
+        form.settings.save()
+        owner = form.parent.created_by
+
+        api_client.force_authenticate(user=owner)
+
+        response = api_client.post(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid]),
+            data={},
+        )
+
+        assert response.status_code == 200
+        assert response.data.get("code") == "SUCCESS"
+        assert response.data.get("message") == "فرم فعال شد"
+
+    def test_if_form_active_returns_400(self, api_client):
+        form = SurveyFormFactory()
+        owner = form.parent.created_by
+
+        api_client.force_authenticate(user=owner)
+
+        response = api_client.post(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid]), data={}
+        )
+
+        assert response.status_code == 400
+        assert response.data.get("code") == "FORM_ALREADY_ACTIVATED"
+
+    def test_if_user_not_allowed_returns_403(
+        self, api_client, student, employee, personal
+    ):
+        form = SurveyFormFactory()
+
+        not_allowed_users = [student, employee, personal]
+        for user in not_allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.post(
+                reverse(self.view_name, args=[form.parent.uuid, form.uuid]), data={}
+            )
+
+            assert response.status_code == 403
+
+    def test_if_user_not_authenticated_returns_401(self, api_client):
+        form = SurveyFormFactory()
+
+        response = api_client.post(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid]), data={}
+        )
+
+        assert response.status_code == 401
+
+    def test_if_form_not_exists_returns_404(self, api_client, superuser):
+        form = SurveyFormFactory()
+        survey_uuid = form.parent.uuid
+        form_uuid = form.uuid
+        form.delete()
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.view_name, args=[survey_uuid, form_uuid]), data={}
+        )
+
+        assert response.status_code == 404
+        assert response.data.get("code") == "FORM_DOES_NOT_EXIST"
+
+    def test_activate_second_form_deactivates_previous(self, api_client, superuser):
+        survey = SurveyFactory()
+        first_form = SurveyFormFactory(parent=survey)
+
+        assert first_form.settings.is_active
+
+        second_form = SurveyFormFactory(parent=survey)
+        second_form.settings.is_active = False
+        second_form.settings.save()
+
+        assert second_form.settings.is_active == False
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.view_name, args=[survey.uuid, second_form.uuid]), data={}
+        )
+
+        assert response.status_code == 200
+
+        survey.refresh_from_db()
+        first_form.refresh_from_db()
+        second_form.refresh_from_db()
+
+        assert survey.active_version == second_form
+        assert first_form.settings.is_active == False

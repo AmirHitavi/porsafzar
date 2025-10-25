@@ -294,7 +294,13 @@ class SurveyFormViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action in ["create"]:
             return [IsManagementOrProfessorOrAdmin()]
-        elif self.action in ["retrieve", "delete", "soft_delete", "revoke_delete"]:
+        elif self.action in [
+            "retrieve",
+            "delete",
+            "soft_delete",
+            "revoke_delete",
+            "activate_form",
+        ]:
             return [IsOwnerOrAdmin()]
         else:
             return [IsAuthenticated()]
@@ -484,10 +490,14 @@ class SurveyFormViewSet(ModelViewSet):
             survey_uuid = kwargs["survey_uuid"]
             form_uuid = kwargs["uuid"]
 
-            form = SurveyForm.objects.get(parent__uuid=survey_uuid, uuid=form_uuid)
+            form = SurveyForm.objects.get(
+                parent__uuid=survey_uuid, uuid=form_uuid, deleted_at__isnull=True
+            )
             self.check_object_permissions(request, form)
 
-            if form.settings.is_active:
+            settings = form.settings
+
+            if settings.is_active:
                 return self._error_response(
                     code="FORM_ALREADY_ACTIVATED",
                     message=_("فرم قبلا فعال شده است."),
@@ -495,8 +505,8 @@ class SurveyFormViewSet(ModelViewSet):
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
 
-            form.settings.is_active = True
-            form.save(update_fields=["is_active"])
+            settings.is_active = True
+            settings.save(update_fields=["is_active"])
 
             return self._success_response(
                 code="SUCCESS",
@@ -511,6 +521,7 @@ class SurveyFormViewSet(ModelViewSet):
                 errors={},
                 status_code=status.HTTP_404_NOT_FOUND,
             )
+
 
 class SurveyFormSettingsViewSet(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
     serializer_class = SurveyFormSettingsSerializer
