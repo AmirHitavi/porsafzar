@@ -15,7 +15,7 @@ def activate_form(form_settings_pk: int):
 
 
 @shared_task
-def deactivate_from(form_settings_pk: int):
+def deactivate_form(form_settings_pk: int):
     with transaction.atomic():
         SurveyFormSettings.objects.filter(pk=form_settings_pk).update(is_active=False)
 
