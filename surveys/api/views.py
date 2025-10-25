@@ -39,7 +39,6 @@ class SurveyViewSet(ModelViewSet):
             status=status_code,
         )
 
-
     def get_serializer_class(self):
         if self.action == "create":
             return CreateSurveySerializer
@@ -53,12 +52,14 @@ class SurveyViewSet(ModelViewSet):
             "destroy",
             "soft_delete",
             "revoke_delete",
-            "list_deleted",
             "list_forms_deleted",
         ]:
             return [IsOwnerOrAdmin()]
 
-        if self.action in ["create"]:
+        if self.action in [
+            "create",
+            "list_deleted",
+        ]:
             return [IsManagementOrProfessorOrAdmin()]
 
         return [IsAuthenticated()]
@@ -90,18 +91,28 @@ class SurveyViewSet(ModelViewSet):
 
         return self._success_response(
             code="SUCCESS",
-            message= _("نظرسنجی با موفقیت ساخته شد"),
+            message=_("نظرسنجی با موفقیت ساخته شد"),
             data={
                 "survey_uuid": survey.uuid,
                 "form_uuid": survey_form.uuid,
             },
-            status_code=status.HTTP_201_CREATED
+            status_code=status.HTTP_201_CREATED,
         )
 
     @action(detail=True, methods=["post"])
     def soft_delete(self, request, *args, **kwargs):
         try:
-            survey = self.get_object()
+            survey = Survey.objects.get(uuid=kwargs["uuid"])
+
+            self.check_object_permissions(request, survey)
+
+            if survey.deleted_at is not None:
+                return self._error_response(
+                    code="SURVEY_ALREADY_DELETED",
+                    message=_("نظرسنجی قبلا حدف شده است"),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
             soft_delete_time = timezone.now()
 
             with transaction.atomic():
@@ -137,19 +148,36 @@ class SurveyViewSet(ModelViewSet):
                 if forms:
                     survey.forms.field.model.objects.bulk_update(forms, ["deleted_at"])
 
-                return Response(
-                    {"detail": _("نظرسنجی حدف شد.")}, status=status.HTTP_200_OK
-                )
+            return self._success_response(
+                code="SUCCESS",
+                message=_("نظرسنجی حدف شد."),
+                data={},
+                status_code=status.HTTP_200_OK,
+            )
 
         except Survey.DoesNotExist:
-            return Response(
-                {"detail": _("نظرسنجی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            return self._error_response(
+                code="SURVEY_NOT_EXISTS",
+                message=_("نظرسنجی یافت نشد"),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=True, methods=["post"])
     def revoke_delete(self, request, *args, **kwargs):
         try:
-            survey = Survey.objects.get(uuid=kwargs["uuid"], deleted_at__isnull=False)
+            survey = Survey.objects.get(uuid=kwargs["uuid"])
+
+            self.check_object_permissions(request, survey)
+
+            if survey.deleted_at is None:
+                return self._error_response(
+                    code="SURVEY_NOT_DELETED",
+                    message=_("نظرسنجی حدف نشده است"),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
             survey_delete_time = survey.deleted_at
             with transaction.atomic():
                 survey.deleted_at = None
@@ -186,16 +214,25 @@ class SurveyViewSet(ModelViewSet):
                         all_answers, ["deleted_at"]
                     )
 
-            return Response(
-                {"detail": _("نظرسنجی بازیابی شد.")}, status=status.HTTP_200_OK
+            return self._success_response(
+                code="SUCCESS",
+                message=_("نظرسنجی بازیابی شد."),
+                data={},
+                status_code=status.HTTP_200_OK,
             )
+
         except Survey.DoesNotExist:
-            return Response(
-                {"detail": _("نظرسنجی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            return self._error_response(
+                code="SURVEY_NOT_EXISTS",
+                message=_("نظرسنجی یافت نشد"),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=False, methods=["get"], url_path="archived")
     def list_deleted(self, request, *args, **kwargs):
+        self.check_permissions(request)
+
         queryset = Survey.objects.filter(deleted_at__isnull=False)
         if queryset:
             page = self.paginate_queryset(queryset)
@@ -206,21 +243,27 @@ class SurveyViewSet(ModelViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         else:
-            return Response(
-                {"detail": _("نظرسنجی بایگانی شده ای یافت نشد")},
-                status=status.HTTP_404_NOT_FOUND,
+            return self._error_response(
+                code="NOT_FOUND",
+                message=_("نظرسنجی بایگانی شده ای یافت نشد"),
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=True, methods=["get"], url_path="archived")
     def list_forms_deleted(self, request, *args, **kwargs):
-        queryset = SurveyForm.objects.filter(
-            deleted_at__isnull=False, parent__uuid=self.kwargs["uuid"]
-        )
+        survey = Survey.objects.get(uuid=kwargs["uuid"])
+
+        self.check_object_permissions(request, survey)
+
+        queryset = SurveyForm.objects.filter(deleted_at__isnull=False, parent=survey)
         if not queryset:
-            return Response(
-                {"detail": _("فرم آرشیو شده برای این نظرسنجی وجود ندارد.")},
-                status=status.HTTP_404_NOT_FOUND,
+            return self._error_response(
+                code="NOT_FOUND",
+                message=_("فرم آرشیو شده برای این نظرسنجی وجود ندارد."),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
+
         page = self.paginate_queryset(queryset)
 
         if page is not None:
