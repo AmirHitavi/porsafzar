@@ -202,7 +202,16 @@ class AnswerSetViewSet(ModelViewSet):
     @action(detail=True, methods=["post"])
     def soft_delete(self, request, *args, **kwargs):
         try:
-            answerset = self.get_object()
+            answerset = AnswerSet.objects.get(uuid=kwargs["uuid"])
+            self.check_object_permissions(request, answerset)
+
+            if answerset.deleted_at is not None:
+                return self._error_response(
+                    code="ANSWER_SET_ALREADY_DELETED",
+                    message=_("جواب قبلا حدف شده است"),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
 
             soft_delete_time = timezone.now()
 
@@ -219,25 +228,41 @@ class AnswerSetViewSet(ModelViewSet):
                     answers, ["deleted_at"]
                 )
 
-            return Response(
-                {"detail": _("جواب پرسش نامه حدف شد.")}, status=status.HTTP_200_OK
+            return self._success_response(
+                code="SUCCESS",
+                message=_("جواب با موفقیت حذف شد"),
+                data={},
+                status_code=status.HTTP_200_OK,
             )
+
         except AnswerSet.DoesNotExist:
-            return Response(
-                {"detail": _("جوابی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            return self._error_response(
+                code="ANSWER_SET_NOT_FOUND",
+                message=_("جوابی یافت نشد."),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=True, methods=["post"])
     def revoke_delete(self, request, *args, **kwargs):
         try:
             answerset = AnswerSet.objects.get(uuid=kwargs["uuid"])
+            self.check_object_permissions(request, answerset)
+
+            if answerset.deleted_at is None:
+                return self._error_response(
+                    code="ANSWER_SET_NOT_DELETED",
+                    message=_("جواب قبلا حدف نشده است"),
+                    errors={},
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
 
             answerset_delete_time = answerset.deleted_at
 
             with transaction.atomic():
 
                 answerset.deleted_at = None
-                answerset.save()
+                answerset.save(update_fields=["deleted_at"])
 
                 answers = list(
                     answerset.answers.filter(deleted_at=answerset_delete_time)
@@ -250,32 +275,43 @@ class AnswerSetViewSet(ModelViewSet):
                     answers, ["deleted_at"]
                 )
 
-            return Response(
-                {"detail": _("جواب پرسش نامه بازیابی شد.")},
-                status=status.HTTP_200_OK,
+            return self._success_response(
+                code="SUCCESS",
+                message=_("جواب پرسش نامه بازیابی شد."),
+                data={},
+                status_code=status.HTTP_200_OK,
             )
+
         except AnswerSet.DoesNotExist:
-            return Response(
-                {"detail": _("جوابی یافت نشد")}, status=status.HTTP_404_NOT_FOUND
+            return self._error_response(
+                code="ANSWER_SET_NOT_FOUND",
+                message=_("جوابی یافت نشد."),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=False, methods=["get"], url_path="archived")
     def list_deleted(self, request, *args, **kwargs):
         active_form = self.get_active_survey_form()
-        if not active_form:
-            return Response(
-                {"detail": _("فرم فعال یافت نشد.")}, status=status.HTTP_404_NOT_FOUND
-            )
+        self.check_object_permissions(request, active_form)
 
+        if active_form is None:
+            return self._error_response(
+                code="FORM_NOT_FOUND",
+                message=_("پرسشنامه معتبری یافت نشد."),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
         queryset = AnswerSet.objects.filter(
             deleted_at__isnull=False,
             survey_form=active_form,
         )
 
         if not queryset:
-            return Response(
-                {"detail": _("جواب بایگانی شده ای وجود ندارد.")},
-                status=status.HTTP_404_NOT_FOUND,
+            return self._success_response(
+                code="NOT_FOUND",
+                message=_("جواب بایگانی شده ای وجود ندارد."),
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
         page = self.paginate_queryset(queryset)
