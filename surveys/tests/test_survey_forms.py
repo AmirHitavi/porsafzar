@@ -406,7 +406,9 @@ class TestSurveyFormActivation:
 class TestSurveyFormList:
     view_name = "survey-forms-list"
 
-    def test_get_list_if_allowed_user_returns_200(self, api_client, superuser, professor, management):
+    def test_get_list_if_allowed_user_returns_200(
+        self, api_client, superuser, professor, management
+    ):
         survey = SurveyFactory()
         SurveyFormFactory.create_batch(10, parent=survey)
 
@@ -420,7 +422,9 @@ class TestSurveyFormList:
             assert response.status_code == 200
             assert len(response.data) == 10
 
-    def test_get_list_if_not_allowed_returns_401(self, api_client, student, employee, personal):
+    def test_get_list_if_not_allowed_returns_401(
+        self, api_client, student, employee, personal
+    ):
         survey = SurveyFactory()
         SurveyFormFactory.create_batch(10, parent=survey)
 

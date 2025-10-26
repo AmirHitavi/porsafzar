@@ -335,6 +335,10 @@ class SurveyFormViewSet(ModelViewSet):
                 parent.save()
 
             try:
+                if parent.active_version:
+                    parent.active_version = None
+                    parent.save()
+
                 # create a new survey form
                 survey_form = create_survey_form(
                     parent=parent,
@@ -449,6 +453,9 @@ class SurveyFormViewSet(ModelViewSet):
                 )
 
             with transaction.atomic():
+                form.deleted_at = None
+                form.save(update_fields=["deleted_at"])
+
                 answer_sets = list(form.answer_sets.filter(deleted_at=form_delete_time))
                 all_answers = []
                 for answer_set in answer_sets:
