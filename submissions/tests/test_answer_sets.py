@@ -6,6 +6,8 @@ from django.urls import reverse
 from config.env import BASE_DIR
 from surveys.tests.factories import SurveyFactory, SurveyFormFactory
 
+from .factories import AnswerSetFactory
+
 
 @pytest.mark.django_db(transaction=True)
 class TestAnswerSetCreation:
@@ -165,3 +167,120 @@ class TestAnswerSetCreation:
 
         response.status_code == 403
         response.data.get("code") == "TOO_MANY_SUBMISSIONS"
+
+
+@pytest.mark.django_db(transaction=True)
+class TestSurveyUpdate:
+    view_name = "survey-submissions-detail"
+
+    def test_if_editable_form_owner_answer_set_valid_data_returns_200(
+        self, api_client, normal_user
+    ):
+        form = SurveyFormFactory()
+        settings = form.settings
+        settings.is_editable = True
+        settings.save()
+
+        answer_set = AnswerSetFactory(user=normal_user, survey_form=form)
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.put(
+            reverse(self.view_name, args=[form.parent.uuid, answer_set.uuid]),
+            data={"metadata": {}},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        assert response.data.get("code") == "SUCCESS"
+
+    def test_if_editable_form_not_owner_returns_403(self, api_client, normal_user):
+        form = SurveyFormFactory()
+        settings = form.settings
+        settings.is_editable = True
+        settings.save()
+
+        answer_set = AnswerSetFactory(survey_form=form)
+
+        api_client.force_authenticate(user=normal_user)
+
+        response = api_client.put(
+            reverse(self.view_name, args=[form.parent.uuid, answer_set.uuid]),
+            data={"metadata": {}},
+            format="json",
+        )
+
+        assert response.status_code == 403
+
+    def test_if_not_editable_returns_403(self, api_client):
+        form = SurveyFormFactory()
+
+        answer_set = AnswerSetFactory(survey_form=form)
+
+        api_client.force_authenticate(user=answer_set.user)
+
+        response = api_client.put(
+            reverse(self.view_name, args=[form.parent.uuid, answer_set.uuid]), data={}
+        )
+
+        assert response.status_code == 403
+        assert response.data.get("code") == "SUBMISSIONS_NOT_EDITABLE"
+
+    def test_if_survey_form_not_active_returns_403(self, api_client):
+        form = SurveyFormFactory()
+        # deactivate the form
+        settings = form.settings
+        settings.is_active = False
+        settings.save()
+
+        # pass the deactivated form as active form pf tje survey
+        survey = form.parent
+        survey.active_version = form
+        survey.save()
+
+        answer_set = AnswerSetFactory(survey_form=form)
+
+        api_client.force_authenticate(user=answer_set.user)
+
+        response = api_client.put(
+            reverse(self.view_name, args=[survey.uuid, answer_set.uuid]), data={}
+        )
+
+        assert response.status_code == 403
+        assert response.data.get("code") == "FORM_NOT_ACTIVE"
+
+    def test_if_active_form_not_exists_returns_404(self, api_client):
+        form = SurveyFormFactory()
+        survey_uuid = form.parent.uuid
+
+        answer_set = AnswerSetFactory(survey_form=form)
+
+        form.delete()
+
+        api_client.force_authenticate(user=answer_set.user)
+
+        response = api_client.put(
+            reverse(self.view_name, args=[survey_uuid, answer_set.uuid]), data={}
+        )
+
+        assert response.status_code == 404
+        assert response.data.get("code") == "FORM_NOT_FOUND"
+
+    def test_if_answer_set_not_exist_returns_404(self, api_client):
+        form = SurveyFormFactory()
+        settings = form.settings
+        settings.is_editable = True
+        settings.save()
+
+        answer_set = AnswerSetFactory(survey_form=form)
+        owner = answer_set.user
+        answer_set_uuid = answer_set.uuid
+        answer_set.delete()
+
+        api_client.force_authenticate(user=owner)
+
+        response = api_client.put(
+            reverse(self.view_name, args=[form.parent.uuid, answer_set_uuid]), data={}
+        )
+
+        assert response.status_code == 404

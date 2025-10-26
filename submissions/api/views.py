@@ -67,7 +67,7 @@ class AnswerSetViewSet(ModelViewSet):
                 if is_editable:
                     return [IsOwner()]
 
-            return [NotAllowed()]
+            return [AllowAny()]
 
         else:
             return [IsSurveyOwnerOrAdmin()]
@@ -152,45 +152,52 @@ class AnswerSetViewSet(ModelViewSet):
 
         active_form = self.get_active_survey_form()
 
-        if not active_form:
-            return Response(
-                {"detail": _("پرسش‌نامه معتبر یافت نشد.")},
-                status=status.HTTP_404_NOT_FOUND,
+        if active_form is None:
+            return self._error_response(
+                code="FORM_NOT_FOUND",
+                message=_("پرسشنامه معتبری یافت نشد."),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        settings = active_form.settings
+        if not settings.is_active:
+            return self._error_response(
+                code="FORM_NOT_ACTIVE",
+                message=_("پرسشنامه غیر فعال است و امکان تغییر جواب وجود ندارد"),
+                errors={},
+                status_code=status.HTTP_403_FORBIDDEN,
             )
 
-        if not active_form.settings.is_active:
-            return Response(
-                {"detail": _("پرسشنامه غیر فعال است و امکان ثبت جواب وجود ندارد")},
-                status=status.HTTP_403_FORBIDDEN,
+        if not settings.is_editable:
+            return self._error_response(
+                code="SUBMISSIONS_NOT_EDITABLE",
+                message=_("این پرسشنامه قابل ویرایش نیست."),
+                errors={},
+                status_code=status.HTTP_403_FORBIDDEN,
             )
 
-        try:
+        answer_set = self.get_object()
 
-            with transaction.atomic():
+        with transaction.atomic():
 
-                answer_set = self.get_object()
-                answer_set.answers.all().delete()
+            answer_set.answers.all().delete()
 
-                serializer = self.get_serializer(answer_set, data=request.data)
-                serializer.is_valid(raise_exception=True)
-                metadata = serializer.validated_data.get("metadata")
-                answer_set = serializer.save()
+            serializer = self.get_serializer(answer_set, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            metadata = serializer.validated_data.get("metadata")
+            answer_set = serializer.save()
 
-                for question_name, answer_value in metadata.items():
-                    create_answer(
-                        answer_set=answer_set,
-                        question_name=question_name,
-                        answer_value=answer_value,
-                    )
-
-            return Response(
-                {"message": _("نظر شما بروزرسانی شد")},
-                status=status.HTTP_201_CREATED,
-            )
-        except AnswerSet.DoesNotExist:
-            return Response(
-                {"message": _("چنین جوابی وجود ندارد.")}, status=status.HTTP_201_CREATED
-            )
+            for question_name, answer_value in metadata.items():
+                create_answer(
+                    answer_set=answer_set,
+                    question_name=question_name,
+                    answer_value=answer_value,
+                )
+        return self._success_response(
+            code="SUCCESS",
+            message=_("نظر شما بروزرسانی شد"),
+            status_code=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["post"])
     def soft_delete(self, request, *args, **kwargs):

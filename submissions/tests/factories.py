@@ -15,5 +15,5 @@ class AnswerSetFactory(factory.django.DjangoModelFactory):
         model = AnswerSet
 
     user = factory.SubFactory(UserFactory)
-    form = factory.SubFactory(SurveyFactory)
+    survey_form = factory.SubFactory(SurveyFactory)
     metadata = factory.LazyAttribute(lambda _: {"title": faker.name()})
