@@ -20,6 +20,18 @@ class AnswerSetViewSet(ModelViewSet):
     http_method_names = ["get", "options", "head", "post", "put", "delete"]
     lookup_field = "uuid"
 
+    def _success_response(self, message, code, status_code, data=None):
+        return Response(
+            {"code": code, "message": message, "data": data or {}},
+            status=status_code,
+        )
+
+    def _error_response(self, message, code, status_code, errors=None):
+        return Response(
+            {"code": code, "message": message, "errors": errors or {}},
+            status=status_code,
+        )
+
     def get_active_survey_form(self):
         survey_uuid = self.kwargs.get("survey_uuid")
         try:
@@ -47,7 +59,7 @@ class AnswerSetViewSet(ModelViewSet):
                 else:
                     return [AllowAny()]
             else:
-                return [NotAllowed()]
+                return [AllowAny()]
 
         elif self.action == "update":
             if active_form:
@@ -69,19 +81,25 @@ class AnswerSetViewSet(ModelViewSet):
 
         active_form = self.get_active_survey_form()
 
-        if not active_form:
-            return Response(
-                {"detail": _("پرسش‌نامه معتبر یافت نشد.")},
-                status=status.HTTP_404_NOT_FOUND,
+        if active_form is None:
+            return self._error_response(
+                code="FORM_NOT_FOUND",
+                message=_("پرسشنامه معتبری یافت نشد."),
+                errors={},
+                status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        if not active_form.settings.is_active:
-            return Response(
-                {"detail": _("پرسشنامه غیر فعال است و امکان ثبت جواب وجود ندارد")},
-                status=status.HTTP_403_FORBIDDEN,
+        settings = active_form.settings
+
+        if settings.is_active is False:
+            return self._error_response(
+                code="FORM_NOT_ACTIVE",
+                message=_("پرسشنامه غیر فعال است و امکان ثبت جواب وجود ندارد"),
+                errors={},
+                status_code=status.HTTP_403_FORBIDDEN,
             )
 
-        max_responses_allowed = active_form.settings.max_submissions_per_user
+        max_responses_allowed = settings.max_submissions_per_user
         user = request.user if request.user.is_authenticated else None
 
         if max_responses_allowed and user:
@@ -91,13 +109,13 @@ class AnswerSetViewSet(ModelViewSet):
             ).count()
 
             if user_submissions >= max_responses_allowed:
-                return Response(
-                    {
-                        "detail": _(
-                            f"شما نمی توانید بیش از {max_responses_allowed} پاسخ ارسال کنید."
-                        )
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
+                return self._error_response(
+                    code="TOO_MANY_SUBMISSIONS",
+                    message=_(
+                        f"شما نمی توانید بیش از {max_responses_allowed} پاسخ ارسال کنید."
+                    ),
+                    errors={},
+                    status_code=status.HTTP_403_FORBIDDEN,
                 )
 
         serializer = self.get_serializer(data=request.data)
@@ -119,8 +137,15 @@ class AnswerSetViewSet(ModelViewSet):
                     answer_value=answer_value,
                 )
 
-        return Response(
-            {"message": _("نظر شما ثبت شد")}, status=status.HTTP_201_CREATED
+        return self._success_response(
+            code="SUCCESS",
+            message=_("نظر شما ثبت شد"),
+            data={
+                "answer_set": answer_set.uuid,
+                "survey_form": active_form.uuid,
+                "user": user.phone_number if user else None,
+            },
+            status_code=status.HTTP_201_CREATED,
         )
 
     def update(self, request, *args, **kwargs):

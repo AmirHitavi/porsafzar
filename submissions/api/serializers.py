@@ -22,6 +22,3 @@ class AnswerSetSerializer(serializers.ModelSerializer):
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
-
-            if action == "me":
-                self.fields.pop("metadata")

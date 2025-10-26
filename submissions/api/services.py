@@ -31,13 +31,26 @@ def create_answer(
     question = form.questions.get(name=question_name)
 
     if isinstance(answer_value, str):
-        answer = Answer(
-            answer_set=answer_set,
-            question=question,
-            question_type=question.type,
-            answer_type=Answer.AnswerType.TEXT,
-            text_value=answer_value,
-        )
+        question_type = question.type
+
+        if question_type == Question.QuestionType.SIGNATUREPAD:
+            answer = Answer(
+                answer_set=answer_set,
+                question=question,
+                question_type=question_type,
+                answer_type=Answer.AnswerType.FILE,
+                file_value=answer_value,
+            )
+            answer.save()
+
+        else:
+            answer = Answer(
+                answer_set=answer_set,
+                question=question,
+                question_type=question.type,
+                answer_type=Answer.AnswerType.TEXT,
+                text_value=answer_value,
+            )
 
     elif isinstance(answer_value, int):
         answer = Answer(
@@ -103,5 +116,5 @@ def create_answer(
                 nested_answer.full_clean()
                 nested_answer.save()
 
-    answer.full_clean()
-    answer.save()
+        answer.full_clean()
+        answer.save()
