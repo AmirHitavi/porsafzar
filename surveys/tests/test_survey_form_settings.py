@@ -4,7 +4,7 @@ from django.urls import reverse
 from surveys.tests.factories import SurveyFormFactory
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 class TestSurveyFormSettings:
     view_name = "survey-form-settings-detail"
 

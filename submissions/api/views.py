@@ -10,7 +10,7 @@ from rest_framework.viewsets import ModelViewSet
 from surveys.models import Survey
 
 from ..models import AnswerSet
-from .permissions import IsOwner, IsSurveyOwnerOrAdmin, NotAllowed
+from .permissions import IsOwner, IsSurveyOwnerOrAdmin
 from .serializers import AnswerSetSerializer
 from .services import create_answer, create_answerset
 

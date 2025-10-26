@@ -2,10 +2,9 @@ import json
 
 from django.contrib.auth import get_user_model
 
-from submissions.models import Answer, AnswerSet
 from surveys.models import Question, SurveyForm
 
-from ..models import AnswerSet
+from ..models import Answer, AnswerSet
 
 User = get_user_model()
 

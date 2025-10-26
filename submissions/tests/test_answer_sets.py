@@ -6,13 +6,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from config.env import BASE_DIR
-from conftest import api_client
 from surveys.tests.factories import SurveyFactory, SurveyFormFactory
 
 from .factories import AnswerSetFactory
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 class TestAnswerSetCreation:
     create_url = reverse("survey-list")
     submission_view_name = "survey-submissions-list"
@@ -172,7 +171,7 @@ class TestAnswerSetCreation:
         response.data.get("code") == "TOO_MANY_SUBMISSIONS"
 
 
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db
 class TestAnswerSetUpdate:
     view_name = "survey-submissions-detail"
 

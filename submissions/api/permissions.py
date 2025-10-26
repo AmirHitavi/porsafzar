@@ -10,11 +10,6 @@ class IsOwner(BasePermission):
         )
 
 
-class NotAllowed(BasePermission):
-    def has_permission(self, request, view):
-        return False
-
-
 class IsSurveyOwnerOrAdmin(BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.user.is_staff or request.user.is_superuser:
