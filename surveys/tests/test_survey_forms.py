@@ -443,3 +443,120 @@ class TestSurveyFormList:
         response = api_client.get(reverse(self.view_name, args=[survey.uuid]))
 
         assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestSurveyFormDetail:
+    view_name = "survey-forms-detail"
+
+    def test_get_if_allowed_users_form_exists_returns_200(self, api_client, superuser):
+        form = SurveyFormFactory()
+
+        allowed_users = [form.parent.created_by, superuser]
+        for user in allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.get(
+                reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+            )
+
+            assert response.status_code == 200
+            assert response.data
+
+    def test_get_if_not_allowed_users_form_exists_returns_403(
+        self, api_client, student, employee, personal
+    ):
+        form = SurveyFormFactory()
+
+        not_allowed_users = [student, employee, personal]
+        for user in not_allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.get(
+                reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+            )
+
+            assert response.status_code == 403
+
+    def test_get_if_form_not_exists_returns_404(self, api_client, superuser):
+        form = SurveyFormFactory()
+        survey_uuid = form.parent.uuid
+        form_uuid = form.uuid
+        form.delete()
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.get(
+            reverse(self.view_name, args=[survey_uuid, form_uuid])
+        )
+
+        assert response.status_code == 404
+
+    def test_get_if_not_authenticated_returns_401(self, api_client):
+        form = SurveyFormFactory()
+
+        response = api_client.get(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+        )
+
+        assert response.status_code == 401
+
+    def test_delete_if_owner_form_exists_returns_204(self, api_client):
+        form = SurveyFormFactory()
+
+        api_client.force_authenticate(user=form.parent.created_by)
+
+        response = api_client.delete(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+        )
+
+        assert response.status_code == 204
+
+    def test_delete_if_admin_form_exists_returns_204(self, api_client, superuser):
+        form = SurveyFormFactory()
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.delete(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+        )
+
+        assert response.status_code == 204
+
+    def test_delete_if_not_allowed_users_form_exists_returns_403(
+        self, api_client, student, employee, personal
+    ):
+        form = SurveyFormFactory()
+
+        not_allowed_users = [student, employee, personal]
+        for user in not_allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.delete(
+                reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+            )
+
+            assert response.status_code == 403
+
+    def test_delete_if_form_not_exists_returns_404(self, api_client, superuser):
+        form = SurveyFormFactory()
+        survey_uuid = form.parent.uuid
+        form_uuid = form.uuid
+        form.delete()
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.delete(
+            reverse(self.view_name, args=[survey_uuid, form_uuid])
+        )
+
+        assert response.status_code == 404
+
+    def test_delete_if_user_not_authenticated_returns_401(self, api_client):
+        form = SurveyFormFactory()
+
+        response = api_client.delete(
+            reverse(self.view_name, args=[form.parent.uuid, form.uuid])
+        )
+
+        assert response.status_code == 401

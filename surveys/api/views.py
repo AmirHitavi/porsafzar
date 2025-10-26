@@ -296,7 +296,7 @@ class SurveyFormViewSet(ModelViewSet):
             return [IsManagementOrProfessorOrAdmin()]
         elif self.action in [
             "retrieve",
-            "delete",
+            "destroy",
             "soft_delete",
             "revoke_delete",
             "activate_form",
