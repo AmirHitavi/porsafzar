@@ -99,14 +99,25 @@ def handle_question_options(*, question: Question, question_data: dict) -> None:
 
         if choices:
             for choice in choices:
-                question_option = QuestionOptions(
-                    question=question,
-                    type=QuestionOptions.OptionType.NUMERIC,
-                    value=choice.get("text"),
-                    numeric_value=choice.get("value"),
-                )
-                question_option.full_clean()
-                question_option.save()
+                if isinstance(choice, dict):
+                    question_option = QuestionOptions(
+                        question=question,
+                        type=QuestionOptions.OptionType.NUMERIC,
+                        value=choice.get("text"),
+                        numeric_value=choice.get("value"),
+                    )
+                    question_option.full_clean()
+                    question_option.save()
+                elif isinstance(choice, int):
+                    question_option = QuestionOptions(
+                        question=question,
+                        type=QuestionOptions.OptionType.NUMERIC,
+                        value=str(choice),
+                        numeric_value=choice,
+                    )
+                    question_option.full_clean()
+                    question_option.save()
+
 
         elif rate_count:
             for i in range(1, rate_count + 1):
