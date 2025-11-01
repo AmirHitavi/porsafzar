@@ -76,6 +76,7 @@ def handle_survey_restore_delete(survey_pk: int, delete_time):
 def handle_form_soft_delete(from_pk: int):
     try:
         form = SurveyForm.deleted_objects.get(pk=from_pk)
+        parent = form.parent
         delete_time = form.deleted_at
 
         with transaction.atomic():
@@ -94,16 +95,20 @@ def handle_form_restore_delete(form_pk: int, delete_time):
     try:
         form = SurveyForm.active_objects.get(pk=form_pk)
 
+        if isinstance(delete_time, datetime):
+            parsed_delete_time = delete_time
+        else:
+            parsed_delete_time = parse_datetime(delete_time)
+
         with transaction.atomic():
             answer_sets = AnswerSet.deleted_objects.filter(
-                survey_form=form, deleted_at=delete_time
+                survey_form=form, deleted_at=parsed_delete_time
             )
             answer_sets.update(deleted_at=None)
 
             answers = Answer.deleted_objects.filter(
-                answer_set__in=answer_sets, deleted_at=delete_time
+                answer_set__in=answer_sets, deleted_at=parsed_delete_time
             )
             answers.update(deleted_at=None)
-        return f"time: {delete_time}"
     except SurveyForm.DoesNotExist:
         return

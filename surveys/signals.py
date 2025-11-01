@@ -1,3 +1,5 @@
+from math import isnan
+
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -56,7 +58,13 @@ def pre_save_form_to_capture_delete_time(sender, instance: SurveyForm, **kwargs)
 def post_save_form_soft_delete(sender, instance: SurveyForm, created, **kwargs):
     if not created:
         if instance.deleted_at:
+            parent = instance.parent
+            if parent.active_version == instance:
+                settings = instance.settings
+                settings.is_active = False
+                settings.save(update_fields=["is_active"])
+
             handle_form_soft_delete.delay(instance.pk)
-        elif instance.deleted_at is None:
+        else:
             delete_time = _old_deleted_at[instance.pk]
             handle_form_restore_delete(instance.pk, delete_time)
