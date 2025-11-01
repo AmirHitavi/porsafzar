@@ -1,5 +1,3 @@
-from django.db import IntegrityError, transaction
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
@@ -12,37 +10,30 @@ from submissions.models import AnswerSet
 
 from ..models import Survey, SurveyForm, SurveyFormSettings
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
+from .selectors import (
+    get_active_surveys,
+    get_deleted_forms_for_survey,
+    get_deleted_surveys,
+    get_soft_deleted_survey_by_uuid,
+    get_survey_by_uuid,
+)
 from .serializers import (
-    CreateSurveySerializer,
     SurveyFormSerializer,
     SurveyFormSettingsSerializer,
     SurveySerializer,
 )
-from .services import create_questions, create_survey, create_survey_form
+from .services import delete_survey, restore_survey
 
 
 class SurveyViewSet(ModelViewSet):
-
-    queryset = Survey.objects.filter(deleted_at__isnull=True)
+    serializer_class = SurveySerializer
     lookup_field = "uuid"
     http_method_names = ["get", "post", "patch", "delete"]
 
-    def _success_response(self, message, code, status_code, data=None):
-        return Response(
-            {"code": code, "message": message, "data": data or {}},
-            status=status_code,
-        )
-
-    def _error_response(self, message, code, status_code, errors=None):
-        return Response(
-            {"code": code, "message": message, "errors": errors or {}},
-            status=status_code,
-        )
-
-    def get_serializer_class(self):
-        if self.action == "create":
-            return CreateSurveySerializer
-        return SurveySerializer
+    def get_queryset(self):
+        if self.action in ["restore", "list_deleted", "list_forms_deleted"]:
+            return get_deleted_surveys()
+        return get_active_surveys()
 
     def get_permissions(self):
 
@@ -50,8 +41,7 @@ class SurveyViewSet(ModelViewSet):
             "retrieve",
             "partial_update",
             "destroy",
-            "soft_delete",
-            "revoke_delete",
+            "restore",
             "list_forms_deleted",
         ]:
             return [IsOwnerOrAdmin()]
@@ -70,207 +60,44 @@ class SurveyViewSet(ModelViewSet):
         return context
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        response = super().create(request, *args, **kwargs)
+        response.data = {
+            "message": _("نظرسنجی با موفقیت ساخته شد"),
+            "data": response.data,
+        }
+        return response
 
-        json_data = serializer.validated_data.get("data")
-
-        with transaction.atomic():
-            # create a survey
-            survey_title = json_data.get("title")
-            survey = create_survey(self.request.user, survey_title)
-
-            # create a survey form
-            survey_form = create_survey_form(
-                parent=survey, json_data=json_data, version=1
-            )
-
-            # create questions
-            pages = json_data.get("pages")
-            create_questions(form=survey_form, pages=pages)
-
-        return self._success_response(
-            code="SUCCESS",
-            message=_("نظرسنجی با موفقیت ساخته شد"),
-            data={
-                "survey_uuid": survey.uuid,
-                "form_uuid": survey_form.uuid,
-            },
-            status_code=status.HTTP_201_CREATED,
+    def destroy(self, request, *args, **kwargs):
+        survey = self.get_object()
+        user = request.user
+        delete_survey(survey=survey, user=user)
+        return Response(
+            {"message": _("نظرسنجی حدف شده است.")}, status=status.HTTP_200_OK
         )
 
     @action(detail=True, methods=["post"])
-    def soft_delete(self, request, *args, **kwargs):
-        try:
-            survey = Survey.objects.get(uuid=kwargs["uuid"])
-
-            self.check_object_permissions(request, survey)
-
-            if survey.deleted_at is not None:
-                return self._error_response(
-                    code="SURVEY_ALREADY_DELETED",
-                    message=_("نظرسنجی قبلا حدف شده است"),
-                    errors={},
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-            soft_delete_time = timezone.now()
-
-            with transaction.atomic():
-                survey.deleted_at = soft_delete_time
-                survey.save(update_fields=["deleted_at"])
-
-                forms = list(survey.forms.filter(deleted_at__isnull=True))
-
-                all_answer_sets = []
-                all_answers = []
-
-                for form in forms:
-                    form.deleted_at = soft_delete_time
-                    answer_sets = list(form.answer_sets.filter(deleted_at__isnull=True))
-                    for answer_set in answer_sets:
-                        answer_set.deleted_at = soft_delete_time
-                        answers = list(
-                            answer_set.answers.filter(deleted_at__isnull=True)
-                        )
-                        for answer in answers:
-                            answer.deleted_at = soft_delete_time
-                        all_answers.extend(answers)
-                    all_answer_sets.extend(answer_sets)
-
-                if all_answers:
-                    AnswerSet.answers.field.model.objects.bulk_update(
-                        all_answers, ["deleted_at"]
-                    )
-                if all_answer_sets:
-                    form.answer_sets.field.model.objects.bulk_update(
-                        all_answer_sets, ["deleted_at"]
-                    )
-                if forms:
-                    survey.forms.field.model.objects.bulk_update(forms, ["deleted_at"])
-
-            return self._success_response(
-                code="SUCCESS",
-                message=_("نظرسنجی حدف شد."),
-                data={},
-                status_code=status.HTTP_200_OK,
-            )
-
-        except Survey.DoesNotExist:
-            return self._error_response(
-                code="SURVEY_NOT_EXISTS",
-                message=_("نظرسنجی یافت نشد"),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-    @action(detail=True, methods=["post"])
-    def revoke_delete(self, request, *args, **kwargs):
-        try:
-            survey = Survey.objects.get(uuid=kwargs["uuid"])
-
-            self.check_object_permissions(request, survey)
-
-            if survey.deleted_at is None:
-                return self._error_response(
-                    code="SURVEY_NOT_DELETED",
-                    message=_("نظرسنجی حدف نشده است"),
-                    errors={},
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
-            survey_delete_time = survey.deleted_at
-            with transaction.atomic():
-                survey.deleted_at = None
-                survey.save(update_fields=["deleted_at"])
-
-                forms = list(survey.forms.filter(deleted_at=survey_delete_time))
-
-                all_answer_sets = []
-                all_answers = []
-
-                for form in forms:
-                    form.deleted_at = None
-                    answer_sets = list(
-                        form.answer_sets.filter(deleted_at=survey_delete_time)
-                    )
-                    for answer_set in answer_sets:
-                        answer_set.deleted_at = None
-                        answers = list(
-                            answer_set.answers.filter(deleted_at=survey_delete_time)
-                        )
-                        for answer in answers:
-                            answer.deleted_at = None
-                        all_answers.extend(answers)
-                    all_answer_sets.extend(answer_sets)
-
-                if forms:
-                    survey.forms.field.model.objects.bulk_update(forms, ["deleted_at"])
-                if all_answer_sets:
-                    form.answer_sets.field.model.objects.bulk_update(
-                        all_answer_sets, ["deleted_at"]
-                    )
-                if all_answers:
-                    AnswerSet.answers.field.model.objects.bulk_update(
-                        all_answers, ["deleted_at"]
-                    )
-
-            return self._success_response(
-                code="SUCCESS",
-                message=_("نظرسنجی بازیابی شد."),
-                data={},
-                status_code=status.HTTP_200_OK,
-            )
-
-        except Survey.DoesNotExist:
-            return self._error_response(
-                code="SURVEY_NOT_EXISTS",
-                message=_("نظرسنجی یافت نشد"),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+    def restore(self, request, *args, **kwargs):
+        survey = get_soft_deleted_survey_by_uuid(uuid=self.kwargs.get("uuid"))
+        self.check_object_permissions(request, survey)
+        restore_survey(survey)
+        return Response(
+            {"message": _("نظرسنجی بازیابی شد.")}, status=status.HTTP_200_OK
+        )
 
     @action(detail=False, methods=["get"], url_path="archived")
     def list_deleted(self, request, *args, **kwargs):
-        self.check_permissions(request)
-
-        queryset = Survey.objects.filter(deleted_at__isnull=False)
-        if queryset:
-            page = self.paginate_queryset(queryset)
-            if page is not None:
-                serializer = self.get_serializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
-
-            serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
-        else:
-            return self._error_response(
-                code="NOT_FOUND",
-                message=_("نظرسنجی بایگانی شده ای یافت نشد"),
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["get"], url_path="archived")
     def list_forms_deleted(self, request, *args, **kwargs):
-        survey = Survey.objects.get(uuid=kwargs["uuid"])
-
+        survey = get_survey_by_uuid(uuid=kwargs.get("uuid"))
         self.check_object_permissions(request, survey)
-
-        queryset = SurveyForm.objects.filter(deleted_at__isnull=False, parent=survey)
-        if not queryset:
-            return self._error_response(
-                code="NOT_FOUND",
-                message=_("فرم آرشیو شده برای این نظرسنجی وجود ندارد."),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-        page = self.paginate_queryset(queryset)
-
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = SurveyFormSerializer(queryset, many=True)
+        queryset = get_deleted_forms_for_survey(survey)
+        serializer = SurveyFormSerializer(
+            queryset, many=True, context=self.get_serializer_context()
+        )
         return Response(serializer.data)
 
 
@@ -491,6 +318,7 @@ class SurveyFormViewSet(ModelViewSet):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
+    # TODO: action is too messy do one of this a file for validations or serializer
     @action(detail=True, methods=["post"], url_path="activate")
     def activate_form(self, request, *args, **kwargs):
         try:

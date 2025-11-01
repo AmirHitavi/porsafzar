@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
@@ -6,6 +7,8 @@ from django.utils import timezone
 
 from config.env import BASE_DIR
 
+from ..models import Survey, SurveyForm
+from ..tasks import handle_survey_restore_delete, handle_survey_soft_delete
 from .factories import SurveyFactory, SurveyFormFactory
 
 
@@ -28,10 +31,8 @@ class TestSurveyCreation:
             response = api_client.post(self.url, data=data)
 
             assert response.status_code == 201
-            assert response.data.get("code") == "SUCCESS"
-            assert response.data.get("message") == "نظرسنجی با موفقیت ساخته شد"
 
-        assert response.data.get("message") == "نظرسنجی با موفقیت ساخته شد"
+            assert response.data == []
 
     def test_if_data_invalid_returns_400(self, api_client, superuser):
 
@@ -65,8 +66,8 @@ class TestSurveyCreation:
 
 @pytest.mark.django_db
 class TestSurveySoftDeleteOperation:
-    soft_delete_view_name = "survey-soft-delete"
-    revoke_delete_view_name = "survey-revoke-delete"
+    soft_delete_view_name = "survey-detail"
+    restore_delete_view_name = "survey-restore"
     archived_list_view_name = "survey-list-deleted"
     archived_list_form_view_name = "survey-list-forms-deleted"
 
@@ -74,39 +75,48 @@ class TestSurveySoftDeleteOperation:
         self, api_client, superuser
     ):
         survey = SurveyFactory()
+        survey_uuid = survey.uuid
         forms = SurveyFormFactory.create_batch(5, parent=survey)
+        forms_uuid = [form.uuid for form in forms]
 
         api_client.force_authenticate(user=superuser)
 
-        response = api_client.post(
-            reverse(self.soft_delete_view_name, args=[survey.uuid]), data={}
+        response = api_client.delete(
+            reverse(self.soft_delete_view_name, args=[survey_uuid])
         )
 
         assert response.status_code == 200
-        assert response.data.get("code") == "SUCCESS"
-        assert response.data.get("message") == "نظرسنجی حدف شد."
+
+        assert Survey.objects.filter(uuid=survey_uuid).exists() is False
+
+        for uuid in forms_uuid:
+            assert SurveyForm.objects.filter(uuid=uuid).exists() is False
+
+    @patch("surveys.signals.handle_survey_soft_delete.delay")
+    def test_soft_delete_if_owner_survey_exists_returns_200(
+        self, mock_delay, api_client, management
+    ):
+        survey = SurveyFactory(created_by=management)
+        forms = SurveyFormFactory.create_batch(5, parent=survey)
+
+        api_client.force_authenticate(user=management)
+
+        response = api_client.delete(
+            reverse(self.soft_delete_view_name, args=[survey.uuid])
+        )
+
+        handle_survey_soft_delete(survey.pk)
+
+        assert response.status_code == 200
 
         survey.refresh_from_db()
+
         assert survey.deleted_at is not None
 
         for form in forms:
             form.refresh_from_db()
             assert form.deleted_at is not None
             assert form.deleted_at == survey.deleted_at
-
-    def test_soft_delete_if_owner_survey_exists_returns_200(self, api_client):
-        survey = SurveyFactory()
-        owner = survey.created_by
-
-        api_client.force_authenticate(user=owner)
-
-        response = api_client.post(
-            reverse(self.soft_delete_view_name, args=[survey.uuid]), data={}
-        )
-
-        assert response.status_code == 200
-        assert response.data.get("code") == "SUCCESS"
-        assert response.data.get("message") == "نظرسنجی حدف شد."
 
     def test_soft_delete_if_not_allowed_user_survey_exists_returns_403(
         self, api_client, normal_user
@@ -115,25 +125,23 @@ class TestSurveySoftDeleteOperation:
 
         api_client.force_authenticate(user=normal_user)
 
-        response = api_client.post(
+        response = api_client.delete(
             reverse(self.soft_delete_view_name, args=[surveys.uuid]), data={}
         )
 
         assert response.status_code == 403
 
-    def test_soft_delete_if_already_deleted_returns_400(self, api_client):
+    def test_soft_delete_if_already_deleted_returns_404(self, api_client):
         survey = SurveyFactory(deleted_at=timezone.now())
         owner = survey.created_by
 
         api_client.force_authenticate(user=owner)
 
-        response = api_client.post(
+        response = api_client.delete(
             reverse(self.soft_delete_view_name, args=[survey.uuid]), data={}
         )
 
-        assert response.status_code == 400
-        assert response.data.get("code") == "SURVEY_ALREADY_DELETED"
-        assert response.data.get("message") == "نظرسنجی قبلا حدف شده است"
+        assert response.status_code == 404
 
     def test_soft_delete_if_not_exists_returns_404(self, api_client, superuser):
         survey = SurveyFactory()
@@ -142,16 +150,15 @@ class TestSurveySoftDeleteOperation:
 
         api_client.force_authenticate(user=superuser)
 
-        response = api_client.post(
+        response = api_client.delete(
             reverse(self.soft_delete_view_name, args=[survey_uuid]), data={}
         )
 
         assert response.status_code == 404
-        assert response.data.get("code") == "SURVEY_NOT_EXISTS"
-        assert response.data.get("message") == "نظرسنجی یافت نشد"
 
-    def test_revoke_delete_if_admin_survey_exists_returns_200(
-        self, api_client, superuser
+    @patch("surveys.signals.handle_survey_restore_delete.delay")
+    def test_restore_delete_if_admin_survey_exists_returns_200(
+        self, mock_delay, api_client, superuser
     ):
         deleted_time = timezone.now()
         survey = SurveyFactory(deleted_at=deleted_time)
@@ -162,32 +169,37 @@ class TestSurveySoftDeleteOperation:
         api_client.force_authenticate(user=superuser)
 
         response = api_client.post(
-            reverse(self.revoke_delete_view_name, args=[survey.uuid]), data={}
+            reverse(self.restore_delete_view_name, args=[survey.uuid]), data={}
         )
 
         assert response.status_code == 200
-        assert response.data.get("code") == "SUCCESS"
-        assert response.data.get("message") == "نظرسنجی بازیابی شد."
+
+        handle_survey_restore_delete(survey.pk, deleted_time)
+
+        survey.refresh_from_db()
+        assert survey.deleted_at is None
 
         for form in forms:
             form.refresh_from_db()
             assert form.deleted_at is None
 
-    def test_revoke_delete_if_owner_survey_exists_returns_200(self, api_client):
+    def test_restore_delete_if_owner_survey_exists_returns_200(self, api_client):
         survey = SurveyFactory(deleted_at=timezone.now())
         owner = survey.created_by
 
         api_client.force_authenticate(user=owner)
 
         response = api_client.post(
-            reverse(self.revoke_delete_view_name, args=[survey.uuid]), data={}
+            reverse(self.restore_delete_view_name, args=[survey.uuid]), data={}
         )
 
         assert response.status_code == 200
-        assert response.data.get("code") == "SUCCESS"
-        assert response.data.get("message") == "نظرسنجی بازیابی شد."
 
-    def test_revoke_delete_if_not_allowed_user_returns_403(
+        survey.refresh_from_db()
+
+        assert survey.deleted_at is None
+
+    def test_restore_delete_if_not_allowed_user_returns_403(
         self, api_client, normal_user
     ):
         surveys = SurveyFactory(deleted_at=timezone.now())
@@ -195,26 +207,24 @@ class TestSurveySoftDeleteOperation:
         api_client.force_authenticate(user=normal_user)
 
         response = api_client.post(
-            reverse(self.revoke_delete_view_name, args=[surveys.uuid]), data={}
+            reverse(self.restore_delete_view_name, args=[surveys.uuid]), data={}
         )
 
         assert response.status_code == 403
 
-    def test_revoke_delete_if_not_deleted_returns_400(self, api_client):
+    def test_restore_delete_if_not_deleted_returns_404(self, api_client):
         survey = SurveyFactory()
         owner = survey.created_by
 
         api_client.force_authenticate(user=owner)
 
         response = api_client.post(
-            reverse(self.revoke_delete_view_name, args=[survey.uuid]), data={}
+            reverse(self.restore_delete_view_name, args=[survey.uuid]), data={}
         )
 
-        assert response.status_code == 400
-        assert response.data.get("code") == "SURVEY_NOT_DELETED"
-        assert response.data.get("message") == "نظرسنجی حدف نشده است"
+        assert response.status_code == 404
 
-    def test_revoke_delete_if_not_exists_returns_404(self, api_client):
+    def test_restore_delete_if_not_exists_returns_404(self, api_client):
         survey = SurveyFactory(deleted_at=timezone.now())
         survey_uuid = survey.uuid
         owner = survey.created_by
@@ -223,12 +233,10 @@ class TestSurveySoftDeleteOperation:
         api_client.force_authenticate(user=owner)
 
         response = api_client.post(
-            reverse(self.revoke_delete_view_name, args=[survey_uuid]), data={}
+            reverse(self.restore_delete_view_name, args=[survey_uuid]), data={}
         )
 
         assert response.status_code == 404
-        assert response.data.get("code") == "SURVEY_NOT_EXISTS"
-        assert response.data.get("message") == "نظرسنجی یافت نشد"
 
     def test_archived_list_if_exists_returns_200(self, api_client, superuser):
         SurveyFactory.create_batch(3, deleted_at=timezone.now())
@@ -240,14 +248,14 @@ class TestSurveySoftDeleteOperation:
         assert response.status_code == 200
         assert len(response.data) == 3
 
-    def test_archived_list_if_not_exists_returns_404(self, api_client, superuser):
+    def test_archived_list_if_not_exists_returns_200(self, api_client, superuser):
 
         api_client.force_authenticate(user=superuser)
 
         response = api_client.get(reverse(self.archived_list_view_name))
 
-        assert response.status_code == 404
-        assert response.data.get("code") == "NOT_FOUND"
+        assert response.status_code == 200
+        assert len(response.data) == 0
 
     def test_archived_list_if_not_allowed_user_returns_403(
         self, api_client, student, employee, personal
@@ -275,17 +283,17 @@ class TestSurveySoftDeleteOperation:
         assert response.status_code == 200
         assert len(response.data) == 5
 
-    def test_archived_list_forms_if_not_exists_returns_404(self, api_client, superuser):
+    def test_archived_list_forms_if_no_forms_returns_200(self, api_client):
         survey = SurveyFactory()
 
-        api_client.force_authenticate(user=superuser)
+        api_client.force_authenticate(user=survey.created_by)
 
         response = api_client.get(
             reverse(self.archived_list_form_view_name, args=[survey.uuid])
         )
 
-        assert response.status_code == 404
-        assert response.data.get("code") == "NOT_FOUND"
+        assert response.status_code == 200
+        assert len(response.data) == 0
 
     def test_archived_list_forms_if_not_allowed_user_returns_403(
         self, api_client, normal_user
@@ -365,30 +373,23 @@ class TestSurveyDetail:
 
         assert response.status_code == 404
 
-    def test_get_if_not_authenticated_returns_401(self, api_client):
-        survey = SurveyFactory()
-
-        response = api_client.get(reverse(self.view_name, args=[survey.uuid]))
-
-        assert response.status_code == 401
-
-    def test_delete_if_owner_form_exists_returns_204(self, api_client):
+    def test_delete_if_owner_form_exists_returns_200(self, api_client):
         survey = SurveyFactory()
 
         api_client.force_authenticate(user=survey.created_by)
 
         response = api_client.delete(reverse(self.view_name, args=[survey.uuid]))
 
-        assert response.status_code == 204
+        assert response.status_code == 200
 
-    def test_delete_if_admin_form_exists_returns_204(self, api_client, superuser):
+    def test_delete_if_admin_form_exists_returns_200(self, api_client, superuser):
         survey = SurveyFactory()
 
         api_client.force_authenticate(user=superuser)
 
         response = api_client.delete(reverse(self.view_name, args=[survey.uuid]))
 
-        assert response.status_code == 204
+        assert response.status_code == 200
 
     def test_delete_if_not_allowed_users_form_exists_returns_403(
         self, api_client, student, employee, personal
@@ -413,13 +414,6 @@ class TestSurveyDetail:
         response = api_client.delete(reverse(self.view_name, args=[survey_uuid]))
 
         assert response.status_code == 404
-
-    def test_delete_if_user_not_authenticated_returns_401(self, api_client):
-        survey = SurveyFactory()
-
-        response = api_client.delete(reverse(self.view_name, args=[survey.uuid]))
-
-        assert response.status_code == 401
 
     def test_patch_if_data_valid_form_exists_returns_200(self, api_client, superuser):
         survey = SurveyFactory()
@@ -464,9 +458,14 @@ class TestSurveyDetail:
 
         assert response.status_code == 404
 
-    def test_patch_if_user_not_authenticated_returns_401(self, api_client):
+    def test_if_not_authenticated_returns_401(self, api_client):
         survey = SurveyFactory()
 
-        response = api_client.delete(reverse(self.view_name, args=[survey.uuid]))
+        response = api_client.get(reverse(self.view_name, args=[survey.uuid]))
+        assert response.status_code == 401
 
+        response = api_client.patch(reverse(self.view_name, args=[survey.uuid]))
+        assert response.status_code == 401
+
+        response = api_client.delete(reverse(self.view_name, args=[survey.uuid]))
         assert response.status_code == 401

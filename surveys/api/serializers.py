@@ -1,10 +1,7 @@
 from rest_framework import serializers
 
 from ..models import Survey, SurveyForm, SurveyFormSettings
-
-
-class CreateSurveySerializer(serializers.Serializer):
-    data = serializers.JSONField(required=True)
+from .services import create_survey, create_survey_form
 
 
 class SurveyFormSerializer(serializers.ModelSerializer):
@@ -50,7 +47,7 @@ class SurveyFormSerializer(serializers.ModelSerializer):
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
-            elif action == ["soft_delete", "revoke_delete"]:
+            elif action in ["soft_delete", "revoke_delete"]:
                 self.fields.clear()
 
     def get_created_at(self, obj: Survey):
@@ -90,6 +87,12 @@ class SurveySerializer(serializers.ModelSerializer):
         if hasattr(self, "context") and self.context.get("action"):
             action = self.context.get("action")
 
+            if action == "create":
+                allowed_fields = {"data"}
+
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)
+
             if action == "list" or action == "retrieve":
                 self.fields.pop("deleted_at")
 
@@ -99,20 +102,34 @@ class SurveySerializer(serializers.ModelSerializer):
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
-            elif action in ["soft_delete", "revoke_delete"]:
+            elif action in ["destroy", "restore"]:
                 self.fields.clear()
 
     def get_forms(self, obj: Survey):
-        forms = obj.forms.filter(deleted_at__isnull=True).order_by("-created_at")
+        forms = SurveyForm.active_objects.filter(parent=obj)
 
         return [
             {
-                "uuid": form.uuid,
                 "version": form.version,
+                "uuid": form.uuid,
                 "description": form.description,
             }
             for form in forms
         ]
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        survey_json = validated_data.get("data")
+
+        survey = create_survey(user=user, title=survey_json.get("title", None))
+        create_survey_form(
+            parent=survey,
+            json_data=survey_json,
+            version=1,
+            description=survey_json.get("description", None),
+        )
+
+        return survey
 
     def get_created_at(self, obj: Survey):
         now = obj.created_at

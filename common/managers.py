@@ -11,7 +11,7 @@ class BaseSafeDeleteManager(models.Manager):
         Returns all objects.
         Override this method in Subclasses.
         """
-        return self.get_queryset()
+        return super().get_queryset()
 
 
 class AllObjectsManager(BaseSafeDeleteManager):
@@ -28,7 +28,7 @@ class ActiveObjectsManager(BaseSafeDeleteManager):
     """
 
     def get_queryset(self):
-        return super().get_queryset().active()
+        return super().get_queryset().filter(deleted_at__isnull=True)
 
 
 class DeletedObjectsManager(BaseSafeDeleteManager):
@@ -37,4 +37,4 @@ class DeletedObjectsManager(BaseSafeDeleteManager):
     """
 
     def get_queryset(self):
-        return super().get_queryset().not_active()
+        return super().get_queryset().filter(deleted_at__isnull=False)

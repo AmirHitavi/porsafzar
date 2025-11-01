@@ -9,7 +9,7 @@ from surveys.api.views import (
 
 router = DefaultRouter()
 
-router.register("surveys", SurveyViewSet)
+router.register("surveys", SurveyViewSet, basename="survey")
 
 surveys_router = NestedDefaultRouter(router, "surveys", lookup="survey")
 surveys_router.register("forms", SurveyFormViewSet, basename="survey-forms")
