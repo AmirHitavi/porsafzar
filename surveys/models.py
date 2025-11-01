@@ -5,7 +5,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from common.models import BaseModel, SafeDeleteModel
@@ -182,18 +181,10 @@ class SurveyFormSettings(BaseModel):
     def clean(self):
         super().clean()
 
-        now = timezone.now()
-
         errors = {}
 
         if self.start_date and self.end_date and self.start_date >= self.end_date:
             errors["end_date"] = _("تاریخ پایان نمی تواند بعد از تاریخ شروع باشد.")
-
-        if self.start_date and self.start_date < now:
-            errors["start_date"] = _("تاریخ شروع نمی‌تواند در گذشته باشد.")
-
-        if self.end_date and self.end_date <= now:
-            errors["end_date"] = _("تاریخ پایان باید بعد از زمان حال باشد.")
 
         if errors:
             raise ValidationError(errors)

@@ -2,6 +2,8 @@ from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+from rest_framework.exceptions import ValidationError
 
 from ..models import Survey, SurveyForm
 
@@ -31,3 +33,26 @@ def delete_survey(survey: Survey, user: User) -> None:
 def restore_survey(survey: Survey) -> None:
     survey.deleted_at = None
     survey.save(update_fields=["deleted_at"])
+
+
+def activate_form(form: SurveyForm):
+    settings = form.settings
+
+    if settings.is_active:
+        raise ValidationError({"message": _("فرم قبلا فعال شده است")})
+
+    settings.is_active = True
+    settings.save(update_fields=["is_active"])
+
+
+def delete_form(form: SurveyForm, user: User):
+    if user.is_superuser:
+        form.delete()
+    else:
+        form.deleted_at = timezone.now()
+        form.save(update_fields=["deleted_at"])
+
+
+def restore_form(form: SurveyForm):
+    form.deleted_at = None
+    form.save(update_fields=["deleted_at"])

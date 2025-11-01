@@ -1,6 +1,6 @@
 from django.db import transaction
 
-from .models import Question, QuestionOptions, SurveyForm, SurveyFormSettings
+from .models import Question, QuestionOptions, Survey, SurveyForm, SurveyFormSettings
 
 
 def survey_settings_activation(settings: SurveyFormSettings):
@@ -14,13 +14,11 @@ def survey_settings_activation(settings: SurveyFormSettings):
                 pk=settings.pk
             ).update(is_active=False)
 
-            parent_survey.active_version = form
-            parent_survey.save()
+            Survey.objects.filter(pk=parent_survey.pk).update(active_version=form)
 
         else:
             if parent_survey.active_version == form:
-                parent_survey.active_version = None
-                parent_survey.save()
+                Survey.objects.filter(pk=parent_survey.pk).update(active_version=None)
 
 
 def create_question(
