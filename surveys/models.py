@@ -8,12 +8,12 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from common.models import BaseModel
+from common.models import BaseModel, SafeDeleteModel
 
 User = get_user_model()
 
 
-class Survey(BaseModel):
+class Survey(BaseModel, SafeDeleteModel):
     uuid = models.UUIDField(
         verbose_name=_("uuid"),
         default=uuid4,
@@ -43,9 +43,6 @@ class Survey(BaseModel):
         db_index=True,
     )
     is_prebuilt = models.BooleanField(verbose_name=_("قالب نظرسنجی "), default=False)
-    deleted_at = models.DateTimeField(
-        verbose_name=_("تاریخ حدف"), null=True, blank=True
-    )
 
     class Meta:
         verbose_name = _("نظرسنجی")
@@ -113,7 +110,7 @@ class TargetAudience(BaseModel):
         super().save(*args, **kwargs)
 
 
-class SurveyForm(BaseModel):
+class SurveyForm(BaseModel, SafeDeleteModel):
     uuid = models.UUIDField(
         verbose_name=_("uuid"),
         default=uuid4,
@@ -143,9 +140,6 @@ class SurveyForm(BaseModel):
         blank=True,
         related_name="forms",
         db_index=True,
-    )
-    deleted_at = models.DateTimeField(
-        verbose_name=_("تاریخ حدف"), null=True, blank=True
     )
 
     class Meta:

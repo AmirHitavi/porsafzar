@@ -5,13 +5,13 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from common.models import BaseUpdateModel
+from common.models import BaseUpdateModel, SafeDeleteModel
 from surveys.models import Question, SurveyForm
 
 User = get_user_model()
 
 
-class AnswerSet(BaseUpdateModel):
+class AnswerSet(BaseUpdateModel, SafeDeleteModel):
     uuid = models.UUIDField(
         verbose_name=_("uuid"),
         default=uuid4,
@@ -34,9 +34,6 @@ class AnswerSet(BaseUpdateModel):
         related_name="answer_sets",
     )
     metadata = models.JSONField(verbose_name=_("جیسون جواب پرسشنامه"))
-    deleted_at = models.DateTimeField(
-        verbose_name=_("تاریخ حدف"), null=True, blank=True
-    )
 
     class Meta:
         verbose_name = _("مجوعه جواب")
@@ -47,7 +44,7 @@ class AnswerSet(BaseUpdateModel):
         return f"answer set: {self.survey_form} form"
 
 
-class Answer(BaseUpdateModel):
+class Answer(BaseUpdateModel, SafeDeleteModel):
     class AnswerType(models.TextChoices):
         TEXT = "text", _("متنی")
         BOOLEAN = "boolean", _("بولین")
@@ -86,9 +83,6 @@ class Answer(BaseUpdateModel):
         blank=True,
     )
     json_value = models.JSONField(verbose_name=_("مقدار JSON"), null=True, blank=True)
-    deleted_at = models.DateTimeField(
-        verbose_name=_("تاریخ حدف"), null=True, blank=True
-    )
 
     class Meta:
         verbose_name = _(" جواب")
