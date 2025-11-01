@@ -1,11 +1,12 @@
 from django.core.validators import RegexValidator
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 
 from ..models import User
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
@@ -43,9 +44,6 @@ class UserSerializer(serializers.ModelSerializer):
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
-            if action == "logout":
-                self.fields.clear()
-
             if (
                 action == "me"
                 and self.context.get("request")
@@ -61,8 +59,16 @@ class UserSerializer(serializers.ModelSerializer):
                 self.fields["is_staff"].read_only = False
                 self.fields["is_superuser"].read_only = False
 
+    def validate_email(self, value):
+        if value and User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(_("ایمیل تکراری است."))
+        return value
 
-class UserOTPSerializer(serializers.Serializer):
+    def create(self, validated_data):
+        return User.objects.create(is_active=False, **validated_data)
+
+
+class UserSerializer(serializers.Serializer):
     phone_number = serializers.CharField(
         label=_("شماره تلفن"),
         max_length=11,
@@ -92,3 +98,28 @@ class UserOTPSerializer(serializers.Serializer):
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
+
+    def validate(self, data):
+        action = self.context.get("action")
+        try:
+            user = User.objects.get(phone_number=data.get("phone_number"))
+            if action in ["register_resend_otp", "register_verify_otp"]:
+                if user.is_active:
+                    raise serializers.ValidationError(
+                        {"phone_number": _("این کاربر قبلاً تأیید شده است")}
+                    )
+            elif action in ["login", "login_verify_otp", "login_resend_otp"]:
+                if not user.is_active:
+                    raise serializers.ValidationError(
+                        {"phone_number": _("این کاربر فعال نیست")}
+                    )
+
+            data["user"] = user
+            return data
+
+        except User.DoesNotExist:
+            raise NotFound({"phone_number": _("کاربری یافت نشد")})
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField(required=True)

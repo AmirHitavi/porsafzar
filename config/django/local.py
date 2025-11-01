@@ -22,6 +22,4 @@ MIDDLEWARE = [
     *MIDDLEWARE,
 ]
 
-INTERNAL_IPS = [
-    "127.0.0.1",
-]
+INTERNAL_IPS = type(str("c"), (), {"__contains__": lambda *a: True})()

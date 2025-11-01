@@ -4,6 +4,7 @@ import random
 
 from django.conf import settings
 from django.core.cache import cache
+from django.utils.translation import gettext_lazy as _
 
 
 class OTPHandler:
@@ -27,7 +28,7 @@ class OTPHandler:
         if cache.get(cache_key):
             return {
                 "status": "error",
-                "message": "OTP already sent. Please wait.",
+                "message": _("کد برای شما ساخته شده است.لطفا صبر بکنید."),
                 "code": "OTP_ALREADY_SENT",
             }
 
@@ -40,7 +41,7 @@ class OTPHandler:
 
         return {
             "status": "success",
-            "message": "OTP sent successfully",
+            "message": _("کد با موفقیت ساخته شد"),
         }
 
     @staticmethod
@@ -58,7 +59,7 @@ class OTPHandler:
             cache.delete(otp_cache_key)
             return {
                 "status": "error",
-                "message": "Too many attempts. Please request a new OTP.",
+                "message": _("درخواست های بیش از حد. برای کد جدید درخواست بکنید."),
                 "code": "TOO_MANY_ATTEMPTS",
             }
 
@@ -66,12 +67,12 @@ class OTPHandler:
             cache.delete_many([otp_cache_key, attempts_cache_key])
             return {
                 "status": "success",
-                "message": "OTP verified successfully.",
+                "message": _("کد با موفقیت تایید شد."),
                 "code": "VERIFICATION_SUCCESS",
             }
 
         return {
             "status": "error",
-            "message": "OTP expired or not found.",
+            "message": _("کد معتبر نیست"),
             "code": "OTP_EXPIRED",
         }
