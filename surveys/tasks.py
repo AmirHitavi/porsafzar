@@ -12,15 +12,18 @@ from .utils import create_questions
 
 @shared_task
 def handle_form_post_save(form_pk: int):
-    form = SurveyForm.objects.get(pk=form_pk)
-    with transaction.atomic():
-        # create setting
-        SurveyFormSettings.objects.create(form=form, is_editable=False)
+    try:
+        form = SurveyForm.objects.get(pk=form_pk)
+        with transaction.atomic():
+            # create setting
+            SurveyFormSettings.objects.create(form=form, is_editable=False)
 
-        # create question
-        form_json = form.metadata
-        pages = form_json.get("pages", [])
-        create_questions(form=form, pages=pages)
+            # create question
+            form_json = form.metadata
+            pages = form_json.get("pages", [])
+            create_questions(form=form, pages=pages)
+    except SurveyForm.DoesNotExist:
+        return
 
 
 @shared_task

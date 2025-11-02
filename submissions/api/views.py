@@ -1,5 +1,3 @@
-from django.db import transaction
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
@@ -7,68 +5,42 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from surveys.models import Survey
-
 from ..models import AnswerSet
-from .permissions import IsOwner, IsSurveyOwnerOrAdmin
+from . import services
+from .permissions import IsOwner, IsOwnerOrSurveyOwnerOrAdmin, IsSurveyOwnerOrAdmin
+from .selectors import (
+    get_active_answeset_by_uuid,
+    get_all_answersets_for_form,
+    get_all_deleted_answersets_for_form,
+    get_answerset_by_uuid,
+    get_soft_deleted_answerset_by_uuid,
+)
 from .serializers import AnswerSetSerializer
-from .services import create_answer, create_answerset
 
 
 class AnswerSetViewSet(ModelViewSet):
     serializer_class = AnswerSetSerializer
-    http_method_names = ["get", "options", "head", "post", "put", "delete"]
+    http_method_names = ["get", "options", "head", "post", "patch", "delete"]
     lookup_field = "uuid"
 
-    def _success_response(self, message, code, status_code, data=None):
-        return Response(
-            {"code": code, "message": message, "data": data or {}},
-            status=status_code,
-        )
-
-    def _error_response(self, message, code, status_code, errors=None):
-        return Response(
-            {"code": code, "message": message, "errors": errors or {}},
-            status=status_code,
-        )
-
-    def get_active_survey_form(self):
-        survey_uuid = self.kwargs.get("survey_uuid")
-        try:
-            survey = Survey.objects.get(uuid=survey_uuid)
-            return survey.active_version
-        except Survey.DoesNotExist:
-            return None
-
     def get_queryset(self):
-        active_version = self.get_active_survey_form()
-        if not active_version:
-            return AnswerSet.objects.none()
-        return AnswerSet.objects.filter(
-            survey_form=active_version, deleted_at__isnull=True
-        )
+        survey_uuid = self.kwargs.get("survey_uuid")
+        form_uuid = self.kwargs.get("form_uuid")
+
+        if self.action == "list_deleted":
+            base_queryset = get_all_deleted_answersets_for_form(survey_uuid, form_uuid)
+        else:
+            base_queryset = get_all_answersets_for_form(survey_uuid, form_uuid)
+
+        return base_queryset.select_related("user", "survey_form")
 
     def get_permissions(self, *args, **kwargs):
-        active_form = self.get_active_survey_form()
-
         if self.action == "create":
-            if active_form:
-                max_responses_allowed = active_form.settings.max_submissions_per_user
-                if max_responses_allowed:
-                    return [IsAuthenticated()]
-                else:
-                    return [AllowAny()]
-            else:
-                return [AllowAny()]
-
-        elif self.action == "update":
-            if active_form:
-                is_editable = active_form.settings.is_editable
-                if is_editable:
-                    return [IsOwner()]
-
             return [AllowAny()]
-
+        elif self.action == "partial_update":
+            return [IsOwner()]
+        elif self.action == "retrieve":
+            return [IsOwnerOrSurveyOwnerOrAdmin()]
         else:
             return [IsSurveyOwnerOrAdmin()]
 
@@ -78,245 +50,64 @@ class AnswerSetViewSet(ModelViewSet):
         return context
 
     def create(self, request, *args, **kwargs):
-
-        active_form = self.get_active_survey_form()
-
-        if active_form is None:
-            return self._error_response(
-                code="FORM_NOT_FOUND",
-                message=_("پرسشنامه معتبری یافت نشد."),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-        settings = active_form.settings
-
-        if settings.is_active is False:
-            return self._error_response(
-                code="FORM_NOT_ACTIVE",
-                message=_("پرسشنامه غیر فعال است و امکان ثبت جواب وجود ندارد"),
-                errors={},
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
-
-        max_responses_allowed = settings.max_submissions_per_user
-        user = request.user if request.user.is_authenticated else None
-
-        if max_responses_allowed and user:
-            user_submissions = AnswerSet.objects.filter(
-                survey_form=active_form,
-                user=user,
-            ).count()
-
-            if user_submissions >= max_responses_allowed:
-                return self._error_response(
-                    code="TOO_MANY_SUBMISSIONS",
-                    message=_(
-                        f"شما نمی توانید بیش از {max_responses_allowed} پاسخ ارسال کنید."
-                    ),
-                    errors={},
-                    status_code=status.HTTP_403_FORBIDDEN,
-                )
-
-        serializer = self.get_serializer(data=request.data)
+        context = self.get_serializer_context()
+        context["survey_uuid"] = kwargs.get("survey_uuid")
+        context["form_uuid"] = kwargs.get("form_uuid")
+        serializer = self.get_serializer(
+            data=request.data,
+            context=context,
+        )
         serializer.is_valid(raise_exception=True)
-
-        metadata = serializer.validated_data.get("metadata")
-
-        with transaction.atomic():
-            answer_set = create_answerset(
-                user=user,
-                survey_form=active_form,
-                metadata=metadata,
-            )
-
-            for question_name, answer_value in metadata.items():
-                create_answer(
-                    answer_set=answer_set,
-                    question_name=question_name,
-                    answer_value=answer_value,
-                )
-
-        return self._success_response(
-            code="SUCCESS",
-            message=_("نظر شما ثبت شد"),
-            data={
-                "answer_set": answer_set.uuid,
-                "survey_form": active_form.uuid,
-                "user": user.phone_number if user else None,
-            },
-            status_code=status.HTTP_201_CREATED,
+        answer_set = serializer.save()
+        return Response(
+            {"message": _("نظر شما ثبت شد."), "data": {"answer_set": answer_set.uuid}},
+            status=status.HTTP_201_CREATED,
         )
 
     def update(self, request, *args, **kwargs):
+        context = self.get_serializer_context()
+        context["survey_uuid"] = kwargs.get("survey_uuid")
+        context["form_uuid"] = kwargs.get("form_uuid")
+        context["answerset_uuid"] = kwargs.get("uuid")
 
-        active_form = self.get_active_survey_form()
+        serializer = self.get_serializer(
+            self.get_object(),
+            data=request.data,
+            partial=True,
+            context=context,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        if active_form is None:
-            return self._error_response(
-                code="FORM_NOT_FOUND",
-                message=_("پرسشنامه معتبری یافت نشد."),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-        settings = active_form.settings
-        if not settings.is_active:
-            return self._error_response(
-                code="FORM_NOT_ACTIVE",
-                message=_("پرسشنامه غیر فعال است و امکان تغییر جواب وجود ندارد"),
-                errors={},
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
-
-        if not settings.is_editable:
-            return self._error_response(
-                code="SUBMISSIONS_NOT_EDITABLE",
-                message=_("این پرسشنامه قابل ویرایش نیست."),
-                errors={},
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
-
-        answer_set = self.get_object()
-
-        with transaction.atomic():
-
-            answer_set.answers.all().delete()
-
-            serializer = self.get_serializer(answer_set, data=request.data)
-            serializer.is_valid(raise_exception=True)
-            metadata = serializer.validated_data.get("metadata")
-            answer_set = serializer.save()
-
-            for question_name, answer_value in metadata.items():
-                create_answer(
-                    answer_set=answer_set,
-                    question_name=question_name,
-                    answer_value=answer_value,
-                )
-        return self._success_response(
-            code="SUCCESS",
-            message=_("نظر شما بروزرسانی شد"),
-            status_code=status.HTTP_200_OK,
+        return Response(
+            {"detail": _("جواب شما بروزرسانی شد.")}, status=status.HTTP_200_OK
         )
 
-    @action(detail=True, methods=["post"])
-    def soft_delete(self, request, *args, **kwargs):
-        try:
-            answerset = AnswerSet.objects.get(uuid=kwargs["uuid"])
-            self.check_object_permissions(request, answerset)
+    def destroy(self, request, *args, **kwargs):
+        user = request.user
 
-            if answerset.deleted_at is not None:
-                return self._error_response(
-                    code="ANSWER_SET_ALREADY_DELETED",
-                    message=_("جواب قبلا حدف شده است"),
-                    errors={},
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
+        if user.is_superuser or user.is_staff:
+            answer_set = get_answerset_by_uuid(kwargs.get("uuid"))
+        else:
+            answer_set = get_active_answeset_by_uuid(kwargs.get("uuid"))
 
-            soft_delete_time = timezone.now()
+        self.check_object_permissions(request, answer_set)
+        services.delete_answerset(answer_set, user)
 
-            with transaction.atomic():
-                answerset.deleted_at = soft_delete_time
-                answerset.save(update_fields=["deleted_at"])
-
-                # bulk_update
-                answers = list(answerset.answers.filter(deleted_at__isnull=True))
-                for answer in answers:
-                    answer.deleted_at = soft_delete_time
-
-                AnswerSet.answers.field.model.objects.bulk_update(
-                    answers, ["deleted_at"]
-                )
-
-            return self._success_response(
-                code="SUCCESS",
-                message=_("جواب با موفقیت حذف شد"),
-                data={},
-                status_code=status.HTTP_200_OK,
-            )
-
-        except AnswerSet.DoesNotExist:
-            return self._error_response(
-                code="ANSWER_SET_NOT_FOUND",
-                message=_("جوابی یافت نشد."),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        return Response({"message": _("پرسشنامه حذف شد.")}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"])
-    def revoke_delete(self, request, *args, **kwargs):
-        try:
-            answerset = AnswerSet.objects.get(uuid=kwargs["uuid"])
-            self.check_object_permissions(request, answerset)
+    def restore(self, request, *args, **kwargs):
+        answer_set = get_soft_deleted_answerset_by_uuid(kwargs.get("uuid"))
+        self.check_object_permissions(request, answer_set)
+        services.restore_answerset(answer_set)
 
-            if answerset.deleted_at is None:
-                return self._error_response(
-                    code="ANSWER_SET_NOT_DELETED",
-                    message=_("جواب قبلا حدف نشده است"),
-                    errors={},
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
-
-            answerset_delete_time = answerset.deleted_at
-
-            with transaction.atomic():
-
-                answerset.deleted_at = None
-                answerset.save(update_fields=["deleted_at"])
-
-                answers = list(
-                    answerset.answers.filter(deleted_at=answerset_delete_time)
-                )
-
-                for answer in answers:
-                    answer.deleted_at = None
-
-                AnswerSet.answers.field.model.objects.bulk_update(
-                    answers, ["deleted_at"]
-                )
-
-            return self._success_response(
-                code="SUCCESS",
-                message=_("جواب پرسش نامه بازیابی شد."),
-                data={},
-                status_code=status.HTTP_200_OK,
-            )
-
-        except AnswerSet.DoesNotExist:
-            return self._error_response(
-                code="ANSWER_SET_NOT_FOUND",
-                message=_("جوابی یافت نشد."),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
+        return Response(
+            {"message": _("جواب پرسشنامه بازیابی شد.")}, status=status.HTTP_200_OK
+        )
 
     @action(detail=False, methods=["get"], url_path="archived")
     def list_deleted(self, request, *args, **kwargs):
-        active_form = self.get_active_survey_form()
-        self.check_object_permissions(request, active_form)
-
-        if active_form is None:
-            return self._error_response(
-                code="FORM_NOT_FOUND",
-                message=_("پرسشنامه معتبری یافت نشد."),
-                errors={},
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-        queryset = AnswerSet.objects.filter(
-            deleted_at__isnull=False,
-            survey_form=active_form,
-        )
-
-        if not queryset:
-            return self._success_response(
-                code="NOT_FOUND",
-                message=_("جواب بایگانی شده ای وجود ندارد."),
-                status_code=status.HTTP_404_NOT_FOUND,
-            )
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

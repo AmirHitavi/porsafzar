@@ -1,10 +1,17 @@
-import json
-
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
+from django.utils import timezone
 
-from surveys.models import Question, SurveyForm
+from surveys.api.selectors import get_active_survey_form_by_uuid
 
-from ..models import Answer, AnswerSet
+from ..models import AnswerSet
+from .selectors import get_active_answeset_by_uuid
+from .validators import (
+    validate_answerset_belongs_to_form,
+    validate_form_is_active,
+    validate_form_is_editable,
+    validate_user_submission_limit,
+)
 
 User = get_user_model()
 
@@ -12,108 +19,49 @@ User = get_user_model()
 def create_answerset(
     *,
     user: User | None = None,
-    survey_form: SurveyForm,
+    survey_uuid: str,
+    form_uuid: str,
     metadata: dict,
 ) -> AnswerSet:
-    return AnswerSet.objects.create(
-        user=user, survey_form=survey_form, metadata=metadata
-    )
+    form = get_active_survey_form_by_uuid(survey_uuid, form_uuid)
+    validate_form_is_active(form)
+    if user and isinstance(user, AnonymousUser):
+        user = None
+    validate_user_submission_limit(form, user)
+    return AnswerSet.objects.create(user=user, survey_form=form, metadata=metadata)
 
 
-def create_answer(
+def update_answerset(
     *,
-    answer_set: AnswerSet,
-    question_name: str,
-    answer_value: str | int | bool | list | dict,
-) -> Answer:
-    form = answer_set.survey_form
-    question = form.questions.get(name=question_name)
+    survey_uuid: str,
+    form_uuid: str,
+    answerset_uuid: str,
+    metadata: dict,
+) -> AnswerSet:
+    form = get_active_survey_form_by_uuid(survey_uuid, form_uuid)
+    answer_set = get_active_answeset_by_uuid(answerset_uuid)
 
-    if isinstance(answer_value, str):
-        question_type = question.type
+    validate_answerset_belongs_to_form(form, answer_set)
+    validate_form_is_active(form)
+    validate_form_is_editable(form)
 
-        if question_type == Question.QuestionType.SIGNATUREPAD:
-            answer = Answer(
-                answer_set=answer_set,
-                question=question,
-                question_type=question_type,
-                answer_type=Answer.AnswerType.FILE,
-                file_value=answer_value,
-            )
-            answer.save()
+    updated_metadata = answer_set.metadata
+    updated_metadata.update(metadata)
 
-        else:
-            answer = Answer(
-                answer_set=answer_set,
-                question=question,
-                question_type=question.type,
-                answer_type=Answer.AnswerType.TEXT,
-                text_value=answer_value,
-            )
+    answer_set.metadata = updated_metadata
+    answer_set.save(update_fields=["metadata"])
 
-    elif isinstance(answer_value, int):
-        answer = Answer(
-            answer_set=answer_set,
-            question=question,
-            question_type=question.type,
-            answer_type=Answer.AnswerType.NUMERIC,
-            numeric_value=answer_value,
-        )
+    return answer_set
 
-    elif isinstance(answer_value, bool):
-        answer = Answer(
-            answer_set=answer_set,
-            question=question,
-            question_type=question.type,
-            answer_type=Answer.AnswerType.BOOLEAN,
-            boolean_value=answer_value,
-        )
 
-    elif isinstance(answer_value, list):
-        question_type = question.type
-        if question_type == Question.QuestionType.FILE:
-            file_value = answer_value[0].get("content")
+def delete_answerset(answer_set: AnswerSet, user: User) -> None:
+    if user.is_superuser or user.is_staff:
+        answer_set.delete()
+    else:
+        answer_set.deleted_at = timezone.now()
+        answer_set.save(update_fields=["deleted_at"])
 
-            answer = Answer(
-                answer_set=answer_set,
-                question=question,
-                question_type=question_type,
-                answer_type=Answer.AnswerType.FILE,
-                file_value=file_value,
-            )
 
-        else:
-            answer = Answer(
-                answer_set=answer_set,
-                question=question,
-                question_type=question_type,
-                answer_type=Answer.AnswerType.JSON,
-                json_value=json.dumps(answer_value),
-            )
-
-    elif isinstance(answer_value, dict):
-        question_type = question.type
-        answer = Answer(
-            answer_set=answer_set,
-            question=question,
-            question_type=question_type,
-            answer_type=Answer.AnswerType.JSON,
-            json_value=answer_value,
-        )
-
-        if question_type == Question.QuestionType.MULTIPLETEXT:
-
-            for question_name, question_value in answer_value.items():
-                nested_question = question.children.get(name=question_name)
-                nested_answer = Answer(
-                    answer_set=answer_set,
-                    question=nested_question,
-                    question_type=question_type,
-                    answer_type=Answer.AnswerType.TEXT,
-                    text_value=question_value,
-                )
-                nested_answer.full_clean()
-                nested_answer.save()
-
-        answer.full_clean()
-        answer.save()
+def restore_answerset(answer_set: AnswerSet) -> None:
+    answer_set.deleted_at = None
+    answer_set.save(update_fields=["deleted_at"])

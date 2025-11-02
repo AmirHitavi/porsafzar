@@ -13,11 +13,13 @@ router.register("surveys", SurveyViewSet, basename="survey")
 
 surveys_router = NestedDefaultRouter(router, "surveys", lookup="survey")
 surveys_router.register("forms", SurveyFormViewSet, basename="survey-forms")
-surveys_router.register("submissions", AnswerSetViewSet, basename="survey-submissions")
 
 survey_forms_router = NestedDefaultRouter(surveys_router, "forms", lookup="form")
 survey_forms_router.register(
     "settings", SurveyFormSettingsViewSet, basename="survey-form-settings"
+)
+survey_forms_router.register(
+    "submissions", AnswerSetViewSet, basename="survey-form-submissions"
 )
 
 urlpatterns = router.urls + surveys_router.urls + survey_forms_router.urls

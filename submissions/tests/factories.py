@@ -17,3 +17,4 @@ class AnswerSetFactory(factory.django.DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
     survey_form = factory.SubFactory(SurveyFactory)
     metadata = factory.LazyAttribute(lambda _: {"title": faker.name()})
+    deleted_at = None

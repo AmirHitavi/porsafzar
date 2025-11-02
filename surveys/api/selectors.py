@@ -41,6 +41,12 @@ def get_soft_deleted_form_by_uuid(parent_uuid, form_uuid) -> SurveyForm:
     )
 
 
+def get_active_survey_form_by_uuid(parent_uuid, form_uuid) -> SurveyForm:
+    return get_object_or_404(
+        SurveyForm.active_objects, parent__uuid=parent_uuid, uuid=form_uuid
+    )
+
+
 def get_all_active_forms():
     return SurveyForm.active_objects.all()
 
