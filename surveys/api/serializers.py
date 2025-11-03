@@ -1,10 +1,13 @@
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from ..models import Survey, SurveyForm, SurveyFormSettings
+from ..models import Survey, SurveyForm, SurveyFormSettings, TargetAudience
 from .selectors import get_survey_by_uuid
 from .services import create_survey, create_survey_form
+
+User = get_user_model()
 
 
 class SurveySerializer(serializers.ModelSerializer):
@@ -99,6 +102,9 @@ class SurveySerializer(serializers.ModelSerializer):
 
 
 class SurveyFormSerializer(serializers.ModelSerializer):
+    target = serializers.PrimaryKeyRelatedField(
+        queryset=TargetAudience.objects.all(), required=False, allow_null=True
+    )
     parent = serializers.UUIDField(source="parent.uuid", read_only=True)
     created_at = serializers.SerializerMethodField(read_only=True)
     deleted_at = serializers.SerializerMethodField(read_only=True)
@@ -111,6 +117,7 @@ class SurveyFormSerializer(serializers.ModelSerializer):
             "description",
             "metadata",
             "parent",
+            "target",
             "created_at",
             "deleted_at",
         ]
@@ -124,19 +131,25 @@ class SurveyFormSerializer(serializers.ModelSerializer):
             action = self.context.get("action")
 
             if action == "list":
-                allowed_fields = {"uuid", "version", "description"}
+                allowed_fields = {"uuid", "version", "description", "target"}
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
             elif action == "retrieve":
-                allowed_fields = {"version", "description", "metadata", "created_at"}
+                allowed_fields = {
+                    "version",
+                    "description",
+                    "metadata",
+                    "target",
+                    "created_at",
+                }
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
             elif action == "create":
-                allowed_fields = {"version", "description", "metadata"}
+                allowed_fields = {"version", "description", "metadata", "target"}
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
@@ -158,6 +171,7 @@ class SurveyFormSerializer(serializers.ModelSerializer):
         version = self.validated_data.get("version")
         description = self.validated_data.get("description", None)
         metadata = self.validated_data.get("metadata")
+        target = self.validated_data.get("target", None)
 
         try:
             return create_survey_form(
@@ -165,6 +179,7 @@ class SurveyFormSerializer(serializers.ModelSerializer):
                 json_data=metadata,
                 version=version,
                 description=description,
+                target=target,
             )
         except IntegrityError:
             raise serializers.ValidationError(
@@ -185,3 +200,50 @@ class SurveyFormSettingsSerializer(serializers.ModelSerializer):
             "max_submissions_per_user",
             "is_editable",
         ]
+
+
+class TargetAudienceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TargetAudience
+        fields = [
+            "id",
+            "name",
+            "description",
+            "roles",
+            "include_phone_numbers",
+            "exclude_phone_numbers",
+        ]
+
+    def validate_include_phone_numbers(self, value):
+        phone_numbers = {str(num).strip() for num in (value or [])}
+        errors = []
+        for phone_number in phone_numbers:
+            if not User.objects.filter(phone_number=phone_number).exists():
+                errors.append(_(f"{phone_number} چنین شماره‌ای وجود ندارد."))
+        if errors:
+            raise serializers.ValidationError(errors)
+        return list(phone_numbers)
+
+    def validate_exclude_phone_numbers(self, value):
+        phone_numbers = {str(num).strip() for num in (value or [])}
+        errors = []
+        for phone_number in phone_numbers:
+            if not User.objects.filter(phone_number=phone_number).exists():
+                errors.append(_(f"{phone_number} چنین شماره‌ای وجود ندارد."))
+        if errors:
+            raise serializers.ValidationError(errors)
+        return list(phone_numbers)
+
+    def validate(self, attrs):
+        include = {str(num).strip() for num in attrs.get("include_phone_numbers", [])}
+        exclude = {str(num).strip() for num in attrs.get("exclude_phone_numbers", [])}
+        common = include & exclude
+        if common:
+            raise serializers.ValidationError(
+                {
+                    "include_phone_numbers": _(
+                        f"شماره‌های {', '.join(common)} نمی‌توانند هم‌زمان در لیست مجاز و غیرمجاز باشند."
+                    )
+                }
+            )
+        return attrs

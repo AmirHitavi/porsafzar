@@ -1,9 +1,12 @@
-from django.db.models import QuerySet
+from django.contrib.auth import get_user_model
+from django.db.models import Q, QuerySet
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 
-from ..models import Survey, SurveyForm, SurveyFormSettings
+from ..models import Survey, SurveyForm, SurveyFormSettings, TargetAudience
+
+User = get_user_model()
 
 
 def get_active_surveys():
@@ -81,3 +84,7 @@ def get_active_version_form(survey_uuid: str) -> SurveyForm:
             {"message": _("هیچ نسخه فعالی برای این نظرسنجی یافت نشد.")}
         )
     return active_version
+
+
+def get_all_target_audiences() -> QuerySet[TargetAudience]:
+    return TargetAudience.objects.all()

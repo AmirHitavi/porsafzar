@@ -93,8 +93,12 @@ class TargetAudience(BaseModel):
     def clean(self):
         super().clean()
 
-        include_phone_numbers_set = set(self.include_phone_numbers)
-        exclude_phone_numbers_set = set(self.exclude_phone_numbers)
+        include_phone_numbers_set = {
+            str(num).strip() for num in self.include_phone_numbers
+        }
+        exclude_phone_numbers_set = {
+            str(num).strip() for num in self.exclude_phone_numbers
+        }
 
         common_phone_numbers = include_phone_numbers_set & exclude_phone_numbers_set
 

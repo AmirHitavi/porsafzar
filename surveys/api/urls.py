@@ -5,11 +5,13 @@ from surveys.api.views import (
     SurveyFormSettingsViewSet,
     SurveyFormViewSet,
     SurveyViewSet,
+    TargetAudienceViewSet,
 )
 
 router = DefaultRouter()
 
 router.register("surveys", SurveyViewSet, basename="survey")
+router.register("target-audiences", TargetAudienceViewSet, basename="target-audience")
 
 surveys_router = NestedDefaultRouter(router, "surveys", lookup="survey")
 surveys_router.register("forms", SurveyFormViewSet, basename="survey-forms")

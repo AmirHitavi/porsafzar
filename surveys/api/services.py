@@ -15,10 +15,18 @@ def create_survey(user: User, title: Optional[str] = None) -> Survey:
 
 
 def create_survey_form(
-    parent: Survey, json_data, version: int, description: str | None = None
+    parent: Survey,
+    json_data,
+    version: int,
+    description: str | None = None,
+    target: int | None = None,
 ) -> SurveyForm:
     return SurveyForm.objects.create(
-        parent=parent, metadata=json_data, version=version, description=description
+        parent=parent,
+        metadata=json_data,
+        version=version,
+        description=description,
+        target=target,
     )
 
 

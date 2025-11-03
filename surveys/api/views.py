@@ -13,6 +13,7 @@ from .serializers import (
     SurveyFormSerializer,
     SurveyFormSettingsSerializer,
     SurveySerializer,
+    TargetAudienceSerializer,
 )
 
 
@@ -191,3 +192,10 @@ class SurveyFormSettingsViewSet(UpdateModelMixin, RetrieveModelMixin, GenericVie
     queryset = selectors.get_all_settings()
     http_method_names = ["get", "patch"]
     permission_classes = [IsOwnerOrAdmin]
+
+
+class TargetAudienceViewSet(ModelViewSet):
+    queryset = selectors.get_all_target_audiences()
+    serializer_class = TargetAudienceSerializer
+    http_method_names = ["get", "patch", "head", "post", "delete"]
+    permission_classes = [IsManagementOrProfessorOrAdmin]
