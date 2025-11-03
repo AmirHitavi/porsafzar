@@ -81,3 +81,13 @@ def validate_form_is_editable(form: SurveyForm):
 # def validate_answerset_belongs_to_form(form: SurveyForm, answer_set: AnswerSet):
 #     if form != answer_set.survey_form:
 #         raise ValidationError({"answer_set": _("این جواب متعلق به این فرم نیست.")})
+
+
+def validate_user_in_target(users, user: User):
+    if user not in users:
+        raise PermissionDenied(
+            detail={
+                "code": "USER_NOT_IN_TARGET",
+                "message": _("شما اجازه پاسخگویی به این پرسشنامه را ندارید."),
+            }
+        )

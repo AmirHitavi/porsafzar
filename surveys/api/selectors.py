@@ -88,3 +88,25 @@ def get_active_version_form(survey_uuid: str) -> SurveyForm:
 
 def get_all_target_audiences() -> QuerySet[TargetAudience]:
     return TargetAudience.objects.all()
+
+
+def get_all_users_target(target: TargetAudience) -> QuerySet[User]:
+
+    roles = target.roles or []
+    includes_user = target.include_phone_numbers or []
+    excludes_user = target.exclude_phone_numbers or []
+
+    query = Q()
+
+    if roles:
+        query |= Q(role__in=roles)
+
+    if includes_user:
+        query |= Q(phone_number__in=includes_user)
+
+    users = User.objects.filter(query)
+
+    if excludes_user:
+        users = users.exclude(phone_number__in=excludes_user)
+
+    return users.distinct()
