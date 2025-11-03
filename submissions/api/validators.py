@@ -1,11 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from rest_framework.exceptions import (
-    NotAuthenticated,
-    PermissionDenied,
-    ValidationError,
-)
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 
 from submissions.models import AnswerSet
 from surveys.models import SurveyForm
@@ -33,13 +29,13 @@ def validate_form_is_active(form: SurveyForm):
             }
         )
 
-    if not settings.is_active:
-        raise PermissionDenied(
-            detail={
-                "code": "FORM_NOT_ACTIVE",
-                "message": _("پرسشنامه غیرفعال است و امکان ثبت پاسخ وجود ندارد."),
-            }
-        )
+    # if not settings.is_active:
+    #     raise PermissionDenied(
+    #         detail={
+    #             "code": "FORM_NOT_ACTIVE",
+    #             "message": _("پرسشنامه غیرفعال است و امکان ثبت پاسخ وجود ندارد."),
+    #         }
+    #     )
 
 
 def validate_user_submission_limit(form: SurveyForm, user: User | None = None):
@@ -80,6 +76,8 @@ def validate_form_is_editable(form: SurveyForm):
         )
 
 
-def validate_answerset_belongs_to_form(form: SurveyForm, answer_set: AnswerSet):
-    if form != answer_set.survey_form:
-        raise ValidationError({"answer_set": _("این جواب متعلق به این فرم نیست.")})
+#
+#
+# def validate_answerset_belongs_to_form(form: SurveyForm, answer_set: AnswerSet):
+#     if form != answer_set.survey_form:
+#         raise ValidationError({"answer_set": _("این جواب متعلق به این فرم نیست.")})

@@ -2,12 +2,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
-from surveys.api.selectors import get_active_survey_form_by_uuid
+from surveys.api.selectors import get_active_version_form
 
 from ..models import AnswerSet
 from .selectors import get_active_answeset_by_uuid
 from .validators import (
-    validate_answerset_belongs_to_form,
     validate_form_is_active,
     validate_form_is_editable,
     validate_user_submission_limit,
@@ -20,10 +19,9 @@ def create_answerset(
     *,
     user: User | None = None,
     survey_uuid: str,
-    form_uuid: str,
     metadata: dict,
 ) -> AnswerSet:
-    form = get_active_survey_form_by_uuid(survey_uuid, form_uuid)
+    form = get_active_version_form(survey_uuid)
     validate_form_is_active(form)
     if user and isinstance(user, AnonymousUser):
         user = None
@@ -34,14 +32,12 @@ def create_answerset(
 def update_answerset(
     *,
     survey_uuid: str,
-    form_uuid: str,
     answerset_uuid: str,
     metadata: dict,
 ) -> AnswerSet:
-    form = get_active_survey_form_by_uuid(survey_uuid, form_uuid)
+    form = get_active_version_form(survey_uuid)
     answer_set = get_active_answeset_by_uuid(answerset_uuid)
 
-    validate_answerset_belongs_to_form(form, answer_set)
     validate_form_is_active(form)
     validate_form_is_editable(form)
 

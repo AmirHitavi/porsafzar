@@ -23,24 +23,20 @@ class AnswerSetSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         survey_uuid = self.context["survey_uuid"]
-        form_uuid = self.context["form_uuid"]
         user = self.context["request"].user or None
 
         return create_answerset(
             user=user,
             survey_uuid=survey_uuid,
-            form_uuid=form_uuid,
             metadata=validated_data["metadata"],
         )
 
     def update(self, instance, validated_data):
         survey_uuid = self.context["survey_uuid"]
-        form_uuid = self.context["form_uuid"]
         answerset_uuid = self.context["answerset_uuid"]
 
         return update_answerset(
             survey_uuid=survey_uuid,
-            form_uuid=form_uuid,
             answerset_uuid=answerset_uuid,
             metadata=validated_data["metadata"],
         )

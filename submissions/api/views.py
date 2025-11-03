@@ -1,11 +1,12 @@
 from django.utils.translation import gettext_lazy as _
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from ..models import AnswerSet
+from surveys.api.selectors import get_active_version_form_uuid
+
 from . import services
 from .permissions import IsOwner, IsOwnerOrSurveyOwnerOrAdmin, IsSurveyOwnerOrAdmin
 from .selectors import (
@@ -25,7 +26,10 @@ class AnswerSetViewSet(ModelViewSet):
 
     def get_queryset(self):
         survey_uuid = self.kwargs.get("survey_uuid")
-        form_uuid = self.kwargs.get("form_uuid")
+        form_uuid = self.request.query_params.get("form_uuid")
+
+        if not form_uuid:
+            form_uuid = get_active_version_form_uuid(survey_uuid)
 
         if self.action == "list_deleted":
             base_queryset = get_all_deleted_answersets_for_form(survey_uuid, form_uuid)
@@ -47,12 +51,15 @@ class AnswerSetViewSet(ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["action"] = self.action
+        context["survey_uuid"] = self.kwargs.get("survey_uuid")
+
+        if self.action in ["list", "list_deleted"]:
+            context["form_uuid"] = self.request.query_params.get("form_uuid")
+
         return context
 
     def create(self, request, *args, **kwargs):
         context = self.get_serializer_context()
-        context["survey_uuid"] = kwargs.get("survey_uuid")
-        context["form_uuid"] = kwargs.get("form_uuid")
         serializer = self.get_serializer(
             data=request.data,
             context=context,
@@ -66,8 +73,6 @@ class AnswerSetViewSet(ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         context = self.get_serializer_context()
-        context["survey_uuid"] = kwargs.get("survey_uuid")
-        context["form_uuid"] = kwargs.get("form_uuid")
         context["answerset_uuid"] = kwargs.get("uuid")
 
         serializer = self.get_serializer(
