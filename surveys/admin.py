@@ -13,7 +13,7 @@ from .models import (
 
 @admin.register(OneTimeLink)
 class OneTimeLinkAdmin(admin.ModelAdmin):
-    pass
+    readonly_fields = ["token"]
 
 
 @admin.register(Question)
