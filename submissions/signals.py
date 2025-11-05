@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -23,16 +24,23 @@ def post_save_answer_set(sender, instance, created, **kwargs):
 @receiver(pre_save, sender=AnswerSet)
 def pre_save_answer_set_to_capture_delete_time(sender, instance, **kwargs):
     if instance.pk:
-        old_instance = AnswerSet.objects.filter(pk=instance.pk).first()
+        old_instance = (
+            AnswerSet.objects.filter(pk=instance.pk).only("deleted_at").first()
+        )
         if old_instance:
-            _old_deleted_at[old_instance] = old_instance.deleted_at
+            _old_deleted_at[instance.pk] = old_instance.deleted_at
 
 
 @receiver(post_save, sender=AnswerSet)
 def post_save_answer_set_soft_delete(sender, instance, created, **kwargs):
     if not created:
         if instance.deleted_at:
-            handle_answerset_soft_delete.delay(instance.pk)
+            transaction.on_commit(
+                lambda: handle_answerset_soft_delete.delay(instance.pk)
+            )
         else:
-            delete_time = _old_deleted_at.get(instance.pk)
-            handle_answerset_restore_delete.delay(instance.pk, delete_time)
+            delete_time = _old_deleted_at.pop(instance.pk, None)
+            if delete_time:
+                handle_answerset_restore_delete.delay(
+                    instance.pk, delete_time.isoformat()
+                )
