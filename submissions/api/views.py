@@ -56,6 +56,9 @@ class AnswerSetViewSet(ModelViewSet):
         if self.action in ["list", "list_deleted"]:
             context["form_uuid"] = self.request.query_params.get("form_uuid")
 
+        if self.action in ["create"]:
+            context["one_time_link"] = self.request.query_params.get("token")
+
         return context
 
     def create(self, request, *args, **kwargs):

@@ -4,6 +4,7 @@ from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from . import selectors, services
@@ -224,3 +225,16 @@ class OneTimeLinkViewSet(
         numbers_of_links = serializer.validated_data["numbers"]
         services.generate_one_time_links(survey_uuid, numbers_of_links)
         return Response(status=status.HTTP_201_CREATED)
+
+
+class OneTimeLinkAccessView(APIView):
+    def get(self, request, token):
+        one_time_link = selectors.get_one_time_link_by_token(token)
+        survey = one_time_link.survey
+        active_form = survey.active_version
+        return Response(
+            {
+                "survey_uuid": str(survey.uuid),
+                "form_uuid": str(active_form.uuid),
+            }
+        )

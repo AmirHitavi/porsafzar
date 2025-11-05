@@ -29,6 +29,7 @@ class AnswerSetSerializer(serializers.ModelSerializer):
             user=user,
             survey_uuid=survey_uuid,
             metadata=validated_data["metadata"],
+            token=self.context.get("one_time_link", None),
         )
 
     def update(self, instance, validated_data):

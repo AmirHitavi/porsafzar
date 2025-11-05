@@ -115,3 +115,8 @@ def get_all_users_target(target: TargetAudience) -> QuerySet[User]:
 def get_all_one_time_links(survey_uuid: str) -> QuerySet:
     survey = get_survey_by_uuid(survey_uuid)
     return OneTimeLink.objects.filter(survey=survey)
+
+
+def get_one_time_link_by_token(token: str):
+    token = token.rstrip("/").strip()
+    return get_object_or_404(OneTimeLink, token=token)

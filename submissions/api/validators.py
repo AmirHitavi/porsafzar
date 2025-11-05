@@ -1,10 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from rest_framework.exceptions import (
+    NotAuthenticated,
+    PermissionDenied,
+    ValidationError,
+)
 
 from submissions.models import AnswerSet
-from surveys.models import SurveyForm
+from surveys.api.selectors import get_one_time_link_by_token
+from surveys.models import OneTimeLink, SurveyForm
 
 User = get_user_model()
 
@@ -90,4 +95,14 @@ def validate_user_in_target(users, user: User):
                 "code": "USER_NOT_IN_TARGET",
                 "message": _("شما اجازه پاسخگویی به این پرسشنامه را ندارید."),
             }
+        )
+
+
+def validate_one_time_link(link: OneTimeLink, form: SurveyForm):
+    if link.survey.active_version != form:
+        raise ValidationError(_("این لینک مربوط به فرم فعال فعلی نمی‌باشد."))
+
+    if link.is_used:
+        raise PermissionDenied(
+            detail={"code": "LINK_USED", "message": _("این لینک قبلاً استفاده شده است.")}
         )

@@ -1,7 +1,9 @@
+from django.urls import path
 from rest_framework_nested.routers import DefaultRouter, NestedDefaultRouter
 
 from submissions.api.views import AnswerSetViewSet
 from surveys.api.views import (
+    OneTimeLinkAccessView,
     OneTimeLinkViewSet,
     SurveyFormSettingsViewSet,
     SurveyFormViewSet,
@@ -25,3 +27,7 @@ survey_forms_router.register(
 )
 
 urlpatterns = router.urls + surveys_router.urls + survey_forms_router.urls
+
+urlpatterns += [
+    path("<str:token>/", OneTimeLinkAccessView.as_view(), name="one-time-link-access"),
+]

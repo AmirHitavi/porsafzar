@@ -2,13 +2,18 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 
-from surveys.api.selectors import get_active_version_form, get_all_users_target
+from surveys.api.selectors import (
+    get_active_version_form,
+    get_all_users_target,
+    get_one_time_link_by_token,
+)
 
 from ..models import AnswerSet
 from .selectors import get_active_answeset_by_uuid
 from .validators import (
     validate_form_is_active,
     validate_form_is_editable,
+    validate_one_time_link,
     validate_user_in_target,
     validate_user_submission_limit,
 )
@@ -21,26 +26,35 @@ def create_answerset(
     user: User | None = None,
     survey_uuid: str,
     metadata: dict,
+    token: str | None = None,
 ) -> AnswerSet:
     form = get_active_version_form(survey_uuid)
-    target = form.target
-
     validate_form_is_active(form)
 
-    if not user:
+    if token:
         user = None
+
+        one_time_link = get_one_time_link_by_token(token)
+        validate_one_time_link(one_time_link, form)
+
+        one_time_link.is_used = True
+        one_time_link.save()
+
     else:
-        if user and isinstance(user, AnonymousUser):
+        target = form.target
+
+        if not user:
             user = None
+        else:
+            if user and isinstance(user, AnonymousUser):
+                user = None
 
-    if target:
-        target_users = get_all_users_target(target)
-        validate_user_in_target(target_users, user)
+        if target:
+            target_users = get_all_users_target(target)
+            validate_user_in_target(target_users, user)
 
-    if user and isinstance(user, AnonymousUser):
-        user = None
+        validate_user_submission_limit(form, user)
 
-    validate_user_submission_limit(form, user)
     return AnswerSet.objects.create(user=user, survey_form=form, metadata=metadata)
 
 
