@@ -5,7 +5,8 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 
-from ..models import Survey, SurveyForm
+from ..models import OneTimeLink, Survey, SurveyForm
+from .selectors import get_survey_by_uuid
 
 User = get_user_model()
 
@@ -64,3 +65,9 @@ def delete_form(form: SurveyForm, user: User):
 def restore_form(form: SurveyForm):
     form.deleted_at = None
     form.save(update_fields=["deleted_at"])
+
+
+def generate_one_time_links(survey_uuid: str, number_of_links: int):
+    survey = get_survey_by_uuid(survey_uuid)
+    for i in range(number_of_links):
+        OneTimeLink.objects.create(survey=survey)

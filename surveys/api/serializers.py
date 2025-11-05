@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import IntegrityError
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from ..models import Survey, SurveyForm, SurveyFormSettings, TargetAudience
+from ..models import OneTimeLink, Survey, SurveyForm, SurveyFormSettings, TargetAudience
 from .selectors import get_survey_by_uuid
 from .services import create_survey, create_survey_form
 
@@ -247,3 +248,26 @@ class TargetAudienceSerializer(serializers.ModelSerializer):
                 }
             )
         return attrs
+
+
+class OneTimeLinkSerializer(serializers.ModelSerializer):
+    numbers = serializers.IntegerField(
+        write_only=True, validators=[MinValueValidator(1)]
+    )
+
+    class Meta:
+        model = OneTimeLink
+        fields = ["numbers", "token", "is_used", "created_at"]
+        read_only_fields = ["token", "is_used", "created_at"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if hasattr(self, "context") and self.context.get("action"):
+            action = self.context["action"]
+
+            if action == "create":
+                allowed_fields = {"numbers"}
+
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)

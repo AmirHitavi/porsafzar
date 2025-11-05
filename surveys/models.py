@@ -1,3 +1,4 @@
+import secrets
 from uuid import uuid4
 
 from django.contrib.auth import get_user_model
@@ -10,6 +11,10 @@ from django.utils.translation import gettext_lazy as _
 from common.models import BaseModel, SafeDeleteModel
 
 User = get_user_model()
+
+
+def generate_secure_token():
+    return secrets.token_urlsafe(16)
 
 
 class Survey(BaseModel, SafeDeleteModel):
@@ -207,7 +212,10 @@ class OneTimeLink(BaseModel):
         db_index=True,
     )
     token = models.CharField(
-        verbose_name=_("token"), unique=True, default=uuid4, editable=False
+        verbose_name=_("token"),
+        unique=True,
+        default=generate_secure_token,
+        editable=False,
     )
     is_used = models.BooleanField(default=False)
 

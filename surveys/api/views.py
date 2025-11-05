@@ -1,8 +1,7 @@
 from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
-from rest_framework import status
+from rest_framework import mixins, status
 from rest_framework.decorators import action
-from rest_framework.mixins import RetrieveModelMixin, UpdateModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
@@ -10,6 +9,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from . import selectors, services
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
 from .serializers import (
+    OneTimeLinkSerializer,
     SurveyFormSerializer,
     SurveyFormSettingsSerializer,
     SurveySerializer,
@@ -187,7 +187,9 @@ class SurveyFormViewSet(ModelViewSet):
         return Response(serializer.data)
 
 
-class SurveyFormSettingsViewSet(UpdateModelMixin, RetrieveModelMixin, GenericViewSet):
+class SurveyFormSettingsViewSet(
+    mixins.UpdateModelMixin, mixins.RetrieveModelMixin, GenericViewSet
+):
     serializer_class = SurveyFormSettingsSerializer
     queryset = selectors.get_all_settings()
     http_method_names = ["get", "patch"]
@@ -199,3 +201,26 @@ class TargetAudienceViewSet(ModelViewSet):
     serializer_class = TargetAudienceSerializer
     http_method_names = ["get", "patch", "head", "post", "delete"]
     permission_classes = [IsManagementOrProfessorOrAdmin]
+
+
+class OneTimeLinkViewSet(
+    mixins.ListModelMixin, mixins.CreateModelMixin, GenericViewSet
+):
+    serializer_class = OneTimeLinkSerializer
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["action"] = self.action
+        return context
+
+    def get_queryset(self):
+        return selectors.get_all_one_time_links(survey_uuid=self.kwargs["survey_uuid"])
+
+    def create(self, request, *args, **kwargs):
+        survey_uuid = self.kwargs["survey_uuid"]
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        numbers_of_links = serializer.validated_data["numbers"]
+        services.generate_one_time_links(survey_uuid, numbers_of_links)
+        return Response(status=status.HTTP_201_CREATED)

@@ -37,4 +37,7 @@ class IsOwnerOrAdmin(BasePermission):
         if hasattr(obj, "form") and request.user == obj.form.parent.created_by:
             return True
 
+        if hasattr(obj, "survey") and request.user == obj.survey.created_by:
+            return True
+
         return False

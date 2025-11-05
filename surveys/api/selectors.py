@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 
-from ..models import Survey, SurveyForm, SurveyFormSettings, TargetAudience
+from ..models import OneTimeLink, Survey, SurveyForm, SurveyFormSettings, TargetAudience
 
 User = get_user_model()
 
@@ -110,3 +110,8 @@ def get_all_users_target(target: TargetAudience) -> QuerySet[User]:
         users = users.exclude(phone_number__in=excludes_user)
 
     return users.distinct()
+
+
+def get_all_one_time_links(survey_uuid: str) -> QuerySet:
+    survey = get_survey_by_uuid(survey_uuid)
+    return OneTimeLink.objects.filter(survey=survey)
