@@ -116,6 +116,8 @@ class SurveyFormViewSet(ModelViewSet):
             "destroy",
             "restore",
             "activate_form",
+            "add_target_audience",
+            "remove_target_audience",
         ]:
             return [IsOwnerOrAdmin()]
         else:
@@ -186,6 +188,21 @@ class SurveyFormViewSet(ModelViewSet):
         queryset = self.get_queryset().filter(parent__uuid=self.kwargs["survey_uuid"])
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="target/add")
+    def add_target_audience(self, request, *args, **kwargs):
+        form = self.get_object()
+        serializer = self.get_serializer(form, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target = serializer.validated_data["target"]
+        services.add_target_audience(form, target)
+        return Response({"detail": _("جامعه هدف به پرسشنامه اضافه شد.")})
+
+    @action(detail=True, methods=["post"], url_path="target/remove")
+    def remove_target_audience(self, request, *args, **kwargs):
+        form = self.get_object()
+        services.remove_target_audience(form)
+        return Response({"detail": _("جامعه هدف از پرسشنامه حذف شد.")})
 
 
 class SurveyFormSettingsViewSet(

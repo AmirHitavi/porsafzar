@@ -3,7 +3,7 @@ from faker import Faker as FactoryFaker
 
 from accounts.tests.factories import UserFactory
 
-from ..models import Survey, SurveyForm
+from ..models import Survey, SurveyForm, TargetAudience
 
 faker = FactoryFaker()
 
@@ -25,3 +25,8 @@ class SurveyFormFactory(factory.django.DjangoModelFactory):
     description = factory.LazyAttribute(lambda _: faker.sentences(nb=2))
     metadata = factory.LazyAttribute(lambda _: {"title": faker.name()})
     parent = factory.SubFactory(SurveyFactory)
+
+
+class TargetAudienceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TargetAudience

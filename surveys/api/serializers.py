@@ -155,8 +155,14 @@ class SurveyFormSerializer(serializers.ModelSerializer):
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
 
-            elif action in ["restore", "activate_form"]:
+            elif action in ["restore", "activate_form", "validate_add_target"]:
                 self.fields.clear()
+
+            elif action == "add_target_audience":
+                allowed_fields = {"target"}
+
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)
 
     def get_created_at(self, obj: Survey):
         return obj.created_at.strftime("%Y-%m-%d: %H:%M:%S")

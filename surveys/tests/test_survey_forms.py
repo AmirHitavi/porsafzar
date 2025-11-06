@@ -7,7 +7,7 @@ from django.utils import timezone
 from config.env import BASE_DIR
 
 from ..models import SurveyForm, SurveyFormSettings
-from .factories import SurveyFactory, SurveyFormFactory
+from .factories import SurveyFactory, SurveyFormFactory, TargetAudienceFactory
 
 
 @pytest.mark.django_db
@@ -37,6 +37,63 @@ class TestSurveyFormCreation:
             )
 
             assert response.status_code == 201
+
+    def test_if_data_valid_target_exists_returns_201(self, api_client, superuser):
+        survey = SurveyFactory()
+
+        file_path = os.path.join(BASE_DIR, "surveys", "tests", "example.json")
+
+        with open(file_path, "r") as f:
+            metadata = f.read()
+
+        version = 1
+        target = TargetAudienceFactory()
+        users = [survey.created_by, superuser]
+        for user in users:
+            version += 1
+
+            data = {
+                "version": version,
+                "metadata": metadata,
+                "description": "",
+                "target": target.id,
+            }
+
+            api_client.force_authenticate(user=user)
+
+            response = api_client.post(
+                reverse(self.view_name, args=[survey.uuid]), data=data
+            )
+
+            assert response.status_code == 201
+
+    def test_if_data_valid_target_not_exists_returns_400(self, api_client, superuser):
+        survey = SurveyFactory()
+
+        file_path = os.path.join(BASE_DIR, "surveys", "tests", "example.json")
+
+        with open(file_path, "r") as f:
+            metadata = f.read()
+
+        version = 1
+        users = [survey.created_by, superuser]
+        for user in users:
+            version += 1
+
+            data = {
+                "version": version,
+                "metadata": metadata,
+                "description": "",
+                "target": 1,
+            }
+
+            api_client.force_authenticate(user=user)
+
+            response = api_client.post(
+                reverse(self.view_name, args=[survey.uuid]), data=data
+            )
+
+            assert response.status_code == 400
 
     def test_if_data_invalid_returns_400(self, api_client):
         survey = SurveyFactory()
@@ -551,3 +608,160 @@ class TestSurveyFormDetail:
         )
 
         assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestSurveyTargetAudience:
+    add_view_name = "survey-forms-add-target-audience"
+    remove_view_name = "survey-forms-remove-target-audience"
+
+    def test_add_if_superuser_data_valid_returns_200(self, api_client, superuser):
+        form = SurveyFormFactory()
+        target_audience = TargetAudienceFactory()
+
+        data = {"target": target_audience.id}
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.add_view_name, args=[form.parent.uuid, form.uuid]), data=data
+        )
+
+        assert response.status_code == 200
+
+    def test_add_if_owner_data_valid_returns_200(self, api_client):
+        form = SurveyFormFactory()
+        target_audience = TargetAudienceFactory()
+
+        data = {"target": target_audience.id}
+
+        api_client.force_authenticate(user=form.parent.created_by)
+
+        response = api_client.post(
+            reverse(self.add_view_name, args=[form.parent.uuid, form.uuid]), data=data
+        )
+
+        assert response.status_code == 200
+
+    def test_add_if_target_not_exists_returns_400(self, api_client, superuser):
+        form = SurveyFormFactory()
+
+        data = {"target": 1}
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.add_view_name, args=[form.parent.uuid, form.uuid]), data=data
+        )
+
+        assert response.status_code == 400
+
+    def test_add_if_duplicate_target_returns_400(self, api_client, superuser):
+        target_audience = TargetAudienceFactory()
+        form = SurveyFormFactory(target=target_audience)
+
+        data = {"target": target_audience.id}
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.add_view_name, args=[form.parent.uuid, form.uuid]), data=data
+        )
+
+        assert response.status_code == 400
+        assert response.data.get("message") == "جامعه هدف فعلی همین است."
+
+    def test_add_if_not_authenticated_returns_401(self, api_client):
+        form = SurveyFormFactory()
+
+        response = api_client.post(
+            reverse(self.add_view_name, args=[form.parent.uuid, form.uuid]),
+            data={"target": 1},
+        )
+
+        assert response.status_code == 401
+
+    def test_remove_if_superuser_data_valid_returns_200(self, api_client, superuser):
+        target_audience = TargetAudienceFactory()
+        form = SurveyFormFactory(target=target_audience)
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid]), data={}
+        )
+
+        assert response.status_code == 200
+
+    def test_remove_if_owner_data_valid_returns_200(self, api_client):
+        target_audience = TargetAudienceFactory()
+        form = SurveyFormFactory(target=target_audience)
+
+        api_client.force_authenticate(user=form.parent.created_by)
+
+        response = api_client.post(
+            reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid]), data={}
+        )
+
+        assert response.status_code == 200
+
+    def test_remove_if_target_not_exists_returns_400(self, api_client, superuser):
+        target_audience = TargetAudienceFactory()
+        form = SurveyFormFactory(target=target_audience)
+
+        target_audience.delete()
+
+        api_client.force_authenticate(user=superuser)
+
+        response = api_client.post(
+            reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid])
+        )
+
+        assert response.status_code == 400
+
+    def test_remove_if_duplicate_target_returns_400(self, api_client, superuser):
+        target_audience = TargetAudienceFactory()
+        form = SurveyFormFactory(target=target_audience)
+
+        api_client.force_authenticate(user=superuser)
+
+        api_client.post(
+            reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid]), data={}
+        )
+
+        response = api_client.post(
+            reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid]), data={}
+        )
+
+        assert response.status_code == 400
+        assert response.data.get("message") == "جامعه هدفی قرار داده نشده است."
+
+    def test_remove_if_not_authenticated_returns_401(self, api_client):
+        form = SurveyFormFactory()
+
+        response = api_client.post(
+            reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid])
+        )
+
+        assert response.status_code == 401
+
+    def test_if_not_allowed_users_form_exists_returns_403(
+        self, api_client, student, employee, personal
+    ):
+        form = SurveyFormFactory()
+
+        not_allowed_users = [student, employee, personal]
+        for user in not_allowed_users:
+            api_client.force_authenticate(user=user)
+
+            response = api_client.post(
+                reverse(self.add_view_name, args=[form.parent.uuid, form.uuid])
+            )
+
+            assert response.status_code == 403
+
+            response = api_client.post(
+                reverse(self.remove_view_name, args=[form.parent.uuid, form.uuid]),
+            )
+
+            assert response.status_code == 403
