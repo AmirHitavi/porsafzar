@@ -6,7 +6,6 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 
 from ..models import OneTimeLink, Survey, SurveyForm, TargetAudience
-from .selectors import get_survey_by_uuid
 
 User = get_user_model()
 
@@ -67,8 +66,7 @@ def restore_form(form: SurveyForm):
     form.save(update_fields=["deleted_at"])
 
 
-def generate_one_time_links(survey_uuid: str, number_of_links: int):
-    survey = get_survey_by_uuid(survey_uuid)
+def generate_one_time_links(survey: Survey, number_of_links: int):
     for i in range(number_of_links):
         OneTimeLink.objects.create(survey=survey)
 

@@ -236,11 +236,12 @@ class OneTimeLinkViewSet(
         return selectors.get_all_one_time_links(survey_uuid=self.kwargs["survey_uuid"])
 
     def create(self, request, *args, **kwargs):
-        survey_uuid = self.kwargs["survey_uuid"]
+        survey = selectors.get_survey_by_uuid(uuid=self.kwargs["survey_uuid"])
+        self.check_object_permissions(request, survey)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         numbers_of_links = serializer.validated_data["numbers"]
-        services.generate_one_time_links(survey_uuid, numbers_of_links)
+        services.generate_one_time_links(survey, numbers_of_links)
         return Response(status=status.HTTP_201_CREATED)
 
 
@@ -252,6 +253,6 @@ class OneTimeLinkAccessView(APIView):
         return Response(
             {
                 "survey_uuid": str(survey.uuid),
-                "form_uuid": str(active_form.uuid),
+                "form_uuid": str(active_form.uuid) if active_form else None,
             }
         )

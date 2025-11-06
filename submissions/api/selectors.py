@@ -1,4 +1,4 @@
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 
 from surveys.api.selectors import get_form_by_uuid

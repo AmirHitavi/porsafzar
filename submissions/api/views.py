@@ -10,7 +10,6 @@ from surveys.api.selectors import (
     get_active_version_form,
     get_active_version_form_uuid,
 )
-from surveys.models import SurveyForm
 
 from . import services
 from .permissions import IsOwner, IsOwnerOrSurveyOwnerOrAdmin, IsSurveyOwnerOrAdmin

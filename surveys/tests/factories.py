@@ -1,9 +1,10 @@
 import factory
+from factory import SubFactory
 from faker import Faker as FactoryFaker
 
 from accounts.tests.factories import UserFactory
 
-from ..models import Survey, SurveyForm, TargetAudience
+from ..models import OneTimeLink, Survey, SurveyForm, TargetAudience
 
 faker = FactoryFaker()
 
@@ -30,3 +31,10 @@ class SurveyFormFactory(factory.django.DjangoModelFactory):
 class TargetAudienceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = TargetAudience
+
+
+class OneTimeLinkFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = OneTimeLink
+
+    survey = SubFactory(SurveyFactory)

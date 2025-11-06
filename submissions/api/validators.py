@@ -8,7 +8,6 @@ from rest_framework.exceptions import (
 )
 
 from submissions.models import AnswerSet
-from surveys.api.selectors import get_one_time_link_by_token
 from surveys.models import OneTimeLink, SurveyForm
 
 User = get_user_model()
