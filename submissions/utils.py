@@ -36,15 +36,6 @@ def create_answer(
                     text_value=answer_value,
                 )
 
-        elif isinstance(answer_value, int):
-            answer = Answer(
-                answer_set=answer_set,
-                question=question,
-                question_type=question.type,
-                answer_type=Answer.AnswerType.NUMERIC,
-                numeric_value=answer_value,
-            )
-
         elif isinstance(answer_value, bool):
             answer = Answer(
                 answer_set=answer_set,
@@ -52,6 +43,15 @@ def create_answer(
                 question_type=question.type,
                 answer_type=Answer.AnswerType.BOOLEAN,
                 boolean_value=answer_value,
+            )
+
+        elif isinstance(answer_value, int):
+            answer = Answer(
+                answer_set=answer_set,
+                question=question,
+                question_type=question.type,
+                answer_type=Answer.AnswerType.NUMERIC,
+                numeric_value=answer_value,
             )
 
         elif isinstance(answer_value, list):
@@ -127,7 +127,10 @@ def update_answer(answer_set: AnswerSet, question_name: str, answer_value) -> An
         answer.json_value = None
         answer.file_value = None
 
-        if isinstance(answer_value, str):
+        if isinstance(answer_value, bool):
+            answer.boolean_value = answer_value
+
+        elif isinstance(answer_value, str):
             if question.type == Question.QuestionType.SIGNATUREPAD:
                 answer.file_value = answer_value
             else:
@@ -135,9 +138,6 @@ def update_answer(answer_set: AnswerSet, question_name: str, answer_value) -> An
 
         elif isinstance(answer_value, int):
             answer.numeric_value = answer_value
-
-        elif isinstance(answer_value, bool):
-            answer.boolean_value = answer_value
 
         elif isinstance(answer_value, list) or isinstance(answer_value, dict):
             answer.json_value = (

@@ -5,7 +5,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from surveys.api.selectors import get_active_version_form_uuid
+from surveys.api.selectors import (
+    get_active_survey_form_by_uuid,
+    get_active_version_form,
+    get_active_version_form_uuid,
+)
+from surveys.models import SurveyForm
 
 from . import services
 from .permissions import IsOwner, IsOwnerOrSurveyOwnerOrAdmin, IsSurveyOwnerOrAdmin
@@ -14,6 +19,7 @@ from .selectors import (
     get_all_answersets_for_form,
     get_all_deleted_answersets_for_form,
     get_answerset_by_uuid,
+    get_charts_data,
     get_soft_deleted_answerset_by_uuid,
 )
 from .serializers import AnswerSetSerializer
@@ -39,7 +45,7 @@ class AnswerSetViewSet(ModelViewSet):
         return base_queryset.select_related("user", "survey_form")
 
     def get_permissions(self, *args, **kwargs):
-        if self.action == "create":
+        if self.action == "create" or self.action == "chart":
             return [AllowAny()]
         elif self.action == "partial_update":
             return [IsOwner()]
@@ -119,3 +125,16 @@ class AnswerSetViewSet(ModelViewSet):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def chart(self, request, *args, **kwargs):
+        survey_uuid = self.kwargs.get("survey_uuid")
+        form_uuid = self.request.query_params.get("form_uuid")
+        if form_uuid:
+            form_uuid = form_uuid.strip()
+            form = get_active_survey_form_by_uuid(survey_uuid, form_uuid)
+        else:
+            form = get_active_version_form(survey_uuid)
+
+        data = get_charts_data(form)
+        return Response(data)
