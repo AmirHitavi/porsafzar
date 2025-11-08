@@ -29,30 +29,28 @@ from drf_spectacular.views import (
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(
+        "docs/api/v1/",
+        include(
+            [
+                path(
+                    "swagger/",
+                    SpectacularSwaggerView.as_view(url_name="schema"),
+                    name="swagger-ui",
+                ),
+                path(
+                    "redoc/",
+                    SpectacularRedocView.as_view(url_name="schema"),
+                    name="redoc",
+                ),
+                path("schema/", SpectacularAPIView.as_view(), name="schema"),
+            ]
+        ),
+    ),
+    path(
         "api/v1/",
         include(
             [
                 path("", include("surveys.api.urls")),
-                path(
-                    "docs/",
-                    include(
-                        [
-                            path(
-                                "swagger/",
-                                SpectacularSwaggerView.as_view(url_name="schema"),
-                                name="swagger-ui",
-                            ),
-                            path(
-                                "redoc/",
-                                SpectacularRedocView.as_view(url_name="schema"),
-                                name="redoc",
-                            ),
-                            path(
-                                "schema/", SpectacularAPIView.as_view(), name="schema"
-                            ),
-                        ]
-                    ),
-                ),
                 path("auth/", include("accounts.api.urls")),
             ]
         ),

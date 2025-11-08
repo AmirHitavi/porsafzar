@@ -72,7 +72,7 @@ def get_active_version_form_uuid(survey_uuid) -> str | None:
     survey = get_active_survey_by_uuid(survey_uuid)
     active_version = survey.active_version
     if not active_version:
-        raise NotFound({"message":_("هیچ نسخه فعالی برای این نظرسنجی یافت نشد.")})
+        raise NotFound({"message": _("هیچ نسخه فعالی برای این نظرسنجی یافت نشد.")})
     return str(active_version.uuid)
 
 

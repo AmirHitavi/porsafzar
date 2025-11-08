@@ -389,8 +389,9 @@ class TestAnswerSetUpdate:
         )
 
         assert response.status_code == 404
-        assert response.data.get("message") == "هیچ نسخه فعالی برای این نظرسنجی یافت نشد."
-
+        assert (
+            response.data.get("message") == "هیچ نسخه فعالی برای این نظرسنجی یافت نشد."
+        )
 
 
 @pytest.mark.django_db
@@ -717,4 +718,6 @@ class TestAnswerSetSoftDeleteOperations:
         response = api_client.get(reverse(self.archived_view_name, args=[survey.uuid]))
 
         assert response.status_code == 404
-        assert response.data.get("message") == "هیچ نسخه فعالی برای این نظرسنجی یافت نشد."
+        assert (
+            response.data.get("message") == "هیچ نسخه فعالی برای این نظرسنجی یافت نشد."
+        )
