@@ -32,6 +32,10 @@ class TargetAudienceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = TargetAudience
 
+    roles = []
+    include_phone_numbers = []
+    exclude_phone_numbers = []
+
 
 class OneTimeLinkFactory(factory.django.DjangoModelFactory):
     class Meta:

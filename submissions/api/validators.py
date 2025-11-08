@@ -88,6 +88,10 @@ def validate_form_is_editable(form: SurveyForm):
 
 
 def validate_user_in_target(users, user: User):
+    if user is None:
+        raise NotAuthenticated(
+            detail={"code": "USER_NOT_AUTHENTICATED", "message": _("احراز هویت بکنید.")}
+        )
     if user not in users:
         raise PermissionDenied(
             detail={
@@ -99,7 +103,12 @@ def validate_user_in_target(users, user: User):
 
 def validate_one_time_link(link: OneTimeLink, form: SurveyForm):
     if link.survey.active_version != form:
-        raise ValidationError(_("این لینک مربوط به فرم فعال فعلی نمی‌باشد."))
+        raise ValidationError(
+            detail={
+                "code": "TOKEN_NOT_FOR_SURVEY",
+                "message": _("این لینک مربوط به فرم فعال فعلی نمی‌باشد."),
+            }
+        )
 
     if link.is_used:
         raise PermissionDenied(

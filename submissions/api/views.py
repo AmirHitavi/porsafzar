@@ -44,7 +44,7 @@ class AnswerSetViewSet(ModelViewSet):
         return base_queryset.select_related("user", "survey_form")
 
     def get_permissions(self, *args, **kwargs):
-        if self.action == "create" or self.action == "chart":
+        if self.action == "create":
             return [AllowAny()]
         elif self.action == "partial_update":
             return [IsOwner()]

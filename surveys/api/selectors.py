@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q, QuerySet
 from django.utils.translation import gettext_lazy as _
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
 
 from ..models import OneTimeLink, Survey, SurveyForm, SurveyFormSettings, TargetAudience
@@ -72,7 +72,7 @@ def get_active_version_form_uuid(survey_uuid) -> str | None:
     survey = get_active_survey_by_uuid(survey_uuid)
     active_version = survey.active_version
     if not active_version:
-        raise ValidationError(_("هیچ نسخه فعالی برای این نظرسنجی یافت نشد."))
+        raise NotFound({"message":_("هیچ نسخه فعالی برای این نظرسنجی یافت نشد.")})
     return str(active_version.uuid)
 
 
@@ -80,9 +80,7 @@ def get_active_version_form(survey_uuid: str) -> SurveyForm:
     survey = get_survey_by_uuid(survey_uuid)
     active_version = survey.active_version
     if not active_version:
-        raise ValidationError(
-            {"message": _("هیچ نسخه فعالی برای این نظرسنجی یافت نشد.")}
-        )
+        raise NotFound({"message": _("هیچ نسخه فعالی برای این نظرسنجی یافت نشد.")})
     return active_version
 
 
