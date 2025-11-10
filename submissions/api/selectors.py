@@ -101,19 +101,22 @@ def build_imagepicker_chart(question: Question, answers: list[dict]) -> dict:
     }
 
 
-def get_charts_data(form: SurveyForm) -> list[dict]:
-    questions = list(
-        form.questions.filter(
-            type__in=[
-                "radiogroup",
-                "checkbox",
-                "dropdown",
-                "tagbox",
-                "boolean",
-                "imagepicker",
-            ]
-        ).prefetch_related("options")
-    )
+def get_charts_data(form: SurveyForm, questions: list | None = None) -> list[dict]:
+    base_questions = form.questions.filter(
+        type__in=[
+            "radiogroup",
+            "checkbox",
+            "dropdown",
+            "tagbox",
+            "boolean",
+            "imagepicker",
+        ]
+    ).prefetch_related("options")
+
+    if questions is not None:
+        questions = list(base_questions.filter(name__in=questions))
+    else:
+        questions = list(base_questions)
 
     all_answer_sets = AnswerSet.active_objects.filter(survey_form=form)
 

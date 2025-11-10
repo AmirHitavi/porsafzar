@@ -5,22 +5,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from surveys.api.selectors import (
-    get_active_survey_form_by_uuid,
-    get_active_version_form,
-    get_active_version_form_uuid,
-)
+from surveys.api import selectors as surveys_selectors
 
+from . import selectors as submission_selectors
 from . import services
 from .permissions import IsOwner, IsOwnerOrSurveyOwnerOrAdmin, IsSurveyOwnerOrAdmin
-from .selectors import (
-    get_active_answeset_by_uuid,
-    get_all_answersets_for_form,
-    get_all_deleted_answersets_for_form,
-    get_answerset_by_uuid,
-    get_charts_data,
-    get_soft_deleted_answerset_by_uuid,
-)
 from .serializers import AnswerSetSerializer
 
 
@@ -34,12 +23,16 @@ class AnswerSetViewSet(ModelViewSet):
         form_uuid = self.request.query_params.get("form_uuid")
 
         if not form_uuid:
-            form_uuid = get_active_version_form_uuid(survey_uuid)
+            form_uuid = surveys_selectors.get_active_version_form_uuid(survey_uuid)
 
         if self.action == "list_deleted":
-            base_queryset = get_all_deleted_answersets_for_form(survey_uuid, form_uuid)
+            base_queryset = submission_selectors.get_all_deleted_answersets_for_form(
+                survey_uuid, form_uuid
+            )
         else:
-            base_queryset = get_all_answersets_for_form(survey_uuid, form_uuid)
+            base_queryset = submission_selectors.get_all_answersets_for_form(
+                survey_uuid, form_uuid
+            )
 
         return base_queryset.select_related("user", "survey_form")
 
@@ -82,7 +75,6 @@ class AnswerSetViewSet(ModelViewSet):
     def update(self, request, *args, **kwargs):
         context = self.get_serializer_context()
         context["answerset_uuid"] = kwargs.get("uuid")
-
         serializer = self.get_serializer(
             self.get_object(),
             data=request.data,
@@ -100,9 +92,11 @@ class AnswerSetViewSet(ModelViewSet):
         user = request.user
 
         if user.is_superuser or user.is_staff:
-            answer_set = get_answerset_by_uuid(kwargs.get("uuid"))
+            answer_set = submission_selectors.get_answerset_by_uuid(kwargs.get("uuid"))
         else:
-            answer_set = get_active_answeset_by_uuid(kwargs.get("uuid"))
+            answer_set = submission_selectors.get_active_answeset_by_uuid(
+                kwargs.get("uuid")
+            )
 
         self.check_object_permissions(request, answer_set)
         services.delete_answerset(answer_set, user)
@@ -111,7 +105,9 @@ class AnswerSetViewSet(ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def restore(self, request, *args, **kwargs):
-        answer_set = get_soft_deleted_answerset_by_uuid(kwargs.get("uuid"))
+        answer_set = submission_selectors.get_soft_deleted_answerset_by_uuid(
+            kwargs.get("uuid")
+        )
         self.check_object_permissions(request, answer_set)
         services.restore_answerset(answer_set)
 
@@ -131,9 +127,14 @@ class AnswerSetViewSet(ModelViewSet):
         form_uuid = self.request.query_params.get("form_uuid")
         if form_uuid:
             form_uuid = form_uuid.strip()
-            form = get_active_survey_form_by_uuid(survey_uuid, form_uuid)
+            form = surveys_selectors.get_active_survey_form_by_uuid(
+                survey_uuid, form_uuid
+            )
         else:
-            form = get_active_version_form(survey_uuid)
+            form = surveys_selectors.get_active_version_form(survey_uuid)
 
-        data = get_charts_data(form)
+        questions = self.request.query_params.get("questions", None)
+        questions = questions.split(",") if questions else None
+
+        data = submission_selectors.get_charts_data(form, questions)
         return Response(data)
