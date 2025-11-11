@@ -11,6 +11,7 @@ from . import selectors, services
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
 from .serializers import (
     OneTimeLinkSerializer,
+    QuestionSerializer,
     SurveyFormSerializer,
     SurveyFormSettingsSerializer,
     SurveySerializer,
@@ -45,12 +46,7 @@ class SurveyViewSet(ModelViewSet):
 
     def get_permissions(self):
 
-        if self.action in [
-            "retrieve",
-            "partial_update",
-            "destroy",
-            "restore",
-        ]:
+        if self.action in ["retrieve", "partial_update", "destroy", "restore", "live"]:
             return [IsOwnerOrAdmin()]
 
         if self.action in [
@@ -102,6 +98,12 @@ class SurveyViewSet(ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"])
+    def live(self, request, *args, **kwargs):
+        survey = self.get_object()
+        services.live_survey(survey)
+        return Response(status=status.HTTP_200_OK)
+
 
 class SurveyFormViewSet(ModelViewSet):
     serializer_class = SurveyFormSerializer
@@ -134,24 +136,14 @@ class SurveyFormViewSet(ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["action"] = self.action
+        context["survey_uuid"] = self.kwargs["survey_uuid"]
         return context
 
     # use for update a survey
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(
-            data=request.data, context={"survey_uuid": self.kwargs["survey_uuid"]}
-        )
-        serializer.is_valid(raise_exception=True)
-        survey_form = serializer.save()
-        return Response(
-            {
-                "message": _("فرم پرسشنامه بروزرسانی شد."),
-                "data": {
-                    "form_uuid": survey_form.uuid,
-                },
-            },
-            status=status.HTTP_201_CREATED,
-        )
+        response = super().create(request, *args, **kwargs)
+        response.data = {"message": _("فرم نظرسنجی با موفقیت ساخته شد")}
+        return response
 
     def destroy(self, request, *args, **kwargs):
         user = request.user
@@ -256,3 +248,27 @@ class OneTimeLinkAccessView(APIView):
                 "form_uuid": str(active_form.uuid) if active_form else None,
             }
         )
+
+
+class QuestionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
+    serializer_class = QuestionSerializer
+    lookup_field = "uuid"
+    http_method_names = ["get", "post"]
+    permission_classes = [IsManagementOrProfessorOrAdmin]
+
+    def get_queryset(self):
+        form_uuid = self.kwargs["form_uuid"]
+        return selectors.get_all_questions(form_uuid=form_uuid)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["action"] = self.action
+        context["form_uuid"] = self.kwargs["form_uuid"]
+        context["survey_uuid"] = self.kwargs["survey_uuid"]
+        return context
+
+    @action(detail=True, methods=["post"], url_path="live")
+    def toggle_live(self, request, *args, **kwargs):
+        question = self.get_object()
+        services.toggle_live_question(question)
+        return Response(status=status.HTTP_200_OK)

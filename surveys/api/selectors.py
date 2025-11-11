@@ -4,7 +4,14 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
 
-from ..models import OneTimeLink, Survey, SurveyForm, SurveyFormSettings, TargetAudience
+from ..models import (
+    OneTimeLink,
+    Question,
+    Survey,
+    SurveyForm,
+    SurveyFormSettings,
+    TargetAudience,
+)
 
 User = get_user_model()
 
@@ -118,3 +125,7 @@ def get_all_one_time_links(survey_uuid: str) -> QuerySet:
 def get_one_time_link_by_token(token: str):
     token = token.rstrip("/").strip()
     return get_object_or_404(OneTimeLink, token=token)
+
+
+def get_all_questions(form_uuid):
+    return Question.objects.filter(survey__uuid=form_uuid).select_related("survey")

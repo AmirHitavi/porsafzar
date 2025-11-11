@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 
-from ..models import OneTimeLink, Survey, SurveyForm, TargetAudience
+from ..models import OneTimeLink, Question, Survey, SurveyForm, TargetAudience
 
 User = get_user_model()
 
@@ -83,3 +83,14 @@ def remove_target_audience(form: SurveyForm):
         raise ValidationError({"message": "جامعه هدفی قرار داده نشده است."})
     form.target = None
     form.save(update_fields=["target"])
+
+
+def live_survey(survey: Survey):
+    survey.is_live = not survey.is_live
+    survey.save(update_fields=["is_live"])
+
+
+def toggle_live_question(question: Question):
+    question.is_live = not question.is_live
+    question.save(update_fields=["is_live"])
+    return question

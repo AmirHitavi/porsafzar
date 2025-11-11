@@ -47,6 +47,7 @@ class Survey(BaseModel, SafeDeleteModel):
         db_index=True,
     )
     is_prebuilt = models.BooleanField(verbose_name=_("قالب نظرسنجی "), default=False)
+    is_live = models.BooleanField(verbose_name=_("وضعیت زنده بودن"), default=False)
 
     class Meta:
         verbose_name = _("نظرسنجی")
@@ -251,6 +252,13 @@ class Question(BaseModel):
         IMAGE = "image", _("تصویر")
         SIGNATUREPAD = "signaturepad", _("امضا")
 
+    uuid = models.UUIDField(
+        verbose_name=_("uuid"),
+        default=uuid4,
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
     survey = models.ForeignKey(
         SurveyForm,
         verbose_name=_("فرم نظرسنجی"),

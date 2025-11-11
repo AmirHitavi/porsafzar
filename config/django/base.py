@@ -27,6 +27,7 @@ THIRD_PARTY_APPS = [
 
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -65,7 +66,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"
+# WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {"default": env.db("DATABASE_URL")}
 
@@ -137,6 +139,16 @@ LOGGING = {
 
 AUTH_USER_MODEL = "accounts.User"
 PHONE_SECRET_KEY = env("PHONE_SECRET_KEY")
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    }
+}
+
 
 from config.settings.beat import *  # noqa
 from config.settings.cache import *  # noqa

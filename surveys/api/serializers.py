@@ -4,7 +4,14 @@ from django.db import IntegrityError
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from ..models import OneTimeLink, Survey, SurveyForm, SurveyFormSettings, TargetAudience
+from ..models import (
+    OneTimeLink,
+    Question,
+    Survey,
+    SurveyForm,
+    SurveyFormSettings,
+    TargetAudience,
+)
 from .selectors import get_survey_by_uuid
 from .services import create_survey, create_survey_form
 
@@ -277,3 +284,10 @@ class OneTimeLinkSerializer(serializers.ModelSerializer):
 
                 for field in set(self.fields) - allowed_fields:
                     self.fields.pop(field)
+
+
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Question
+        fields = ["uuid", "name", "title", "type", "is_live", "parent", "created_at"]
+        read_only_fields = ["uuid", "name", "title", "type", "parent", "created_at"]

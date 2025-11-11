@@ -5,6 +5,7 @@ from submissions.api.views import AnswerSetViewSet
 from surveys.api.views import (
     OneTimeLinkAccessView,
     OneTimeLinkViewSet,
+    QuestionViewSet,
     SurveyFormSettingsViewSet,
     SurveyFormViewSet,
     SurveyViewSet,
@@ -24,6 +25,9 @@ surveys_router.register("links", OneTimeLinkViewSet, basename="survey-links")
 survey_forms_router = NestedDefaultRouter(surveys_router, "forms", lookup="form")
 survey_forms_router.register(
     "settings", SurveyFormSettingsViewSet, basename="survey-form-settings"
+)
+survey_forms_router.register(
+    "questions", QuestionViewSet, basename="survey-form-questions"
 )
 
 urlpatterns = router.urls + surveys_router.urls + survey_forms_router.urls
