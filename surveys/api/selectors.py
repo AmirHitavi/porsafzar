@@ -17,11 +17,11 @@ User = get_user_model()
 
 
 def get_active_surveys():
-    return Survey.active_objects.all()
+    return Survey.active_objects.filter(is_prebuilt=False)
 
 
 def get_deleted_surveys():
-    return Survey.deleted_objects.all()
+    return Survey.deleted_objects.filter(is_prebuilt=False)
 
 
 def get_survey_by_uuid(uuid):
@@ -37,11 +37,15 @@ def get_soft_deleted_survey_by_uuid(uuid):
 
 
 def get_all_active_survey_forms() -> QuerySet[SurveyForm]:
-    return SurveyForm.active_objects.all()
+    return SurveyForm.active_objects.filter()
 
 
 def get_all_deleted_survey_forms() -> QuerySet[SurveyForm]:
     return SurveyForm.deleted_objects.all()
+
+
+def get_all_prebuilt_surveys() -> QuerySet[Survey]:
+    return Survey.active_objects.filter(is_prebuilt=True)
 
 
 def get_form_by_uuid(parent_uuid, form_uuid) -> SurveyForm:

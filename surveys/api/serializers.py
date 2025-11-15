@@ -291,3 +291,68 @@ class QuestionSerializer(serializers.ModelSerializer):
         model = Question
         fields = ["uuid", "name", "title", "type", "is_live", "parent", "created_at"]
         read_only_fields = ["uuid", "name", "title", "type", "parent", "created_at"]
+
+
+class PreBuiltSurveySerializer(serializers.ModelSerializer):
+    forms_metadata = serializers.SerializerMethodField()
+    version = serializers.IntegerField(validators=[MinValueValidator(1)])
+
+    class Meta:
+        model = Survey
+        fields = ["uuid", "title", "forms_metadata", "version"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if hasattr(self, "context") and self.context.get("action"):
+            action = self.context["action"]
+
+            if action == "retrieve":
+                allowed_fields = {"forms_metadata"}
+
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)
+
+            elif action == "list":
+                self.fields.pop("forms_metadata")
+                self.fields.pop("version")
+
+            elif action == "create_prebuilt":
+                allowed_fields = {"version", "title"}
+
+                for field in set(self.fields) - allowed_fields:
+                    self.fields.pop(field)
+
+    def validate_version(self, version):
+        survey_uuid = self.context["survey_uuid"]
+        exists = SurveyForm.active_objects.filter(
+            parent__uuid=survey_uuid, version=version
+        ).exists()
+
+        if not exists:
+            raise serializers.ValidationError(_("چنین نسخه ای برای نظرسنجی یافت نشد."))
+
+        return version
+
+    def get_forms_metadata(self, obj: Survey):
+        forms = obj.forms.values("version", "metadata")
+        return forms
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        user = request.user
+        prebuilt_survey = get_survey_by_uuid(self.context["survey_uuid"])
+
+        version = validated_data["version"]
+        title = validated_data.get("title", prebuilt_survey.title)
+
+        prebuilt_form = SurveyForm.active_objects.get(
+            parent=prebuilt_survey, version=version
+        )
+        new_survey = create_survey(user=user, title=title)
+        create_survey_form(
+            parent=new_survey,
+            json_data=prebuilt_form.metadata,
+            version=1,
+        )
+        return new_survey

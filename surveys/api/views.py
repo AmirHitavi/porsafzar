@@ -2,15 +2,18 @@ from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import GenericViewSet, ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
 
+from ..models import Survey
 from . import selectors, services
 from .permissions import IsManagementOrProfessorOrAdmin, IsOwnerOrAdmin
 from .serializers import (
     OneTimeLinkSerializer,
+    PreBuiltSurveySerializer,
     QuestionSerializer,
     SurveyFormSerializer,
     SurveyFormSettingsSerializer,
@@ -46,7 +49,15 @@ class SurveyViewSet(ModelViewSet):
 
     def get_permissions(self):
 
-        if self.action in ["retrieve", "partial_update", "destroy", "restore", "live"]:
+        if self.action in [
+            "retrieve",
+            "partial_update",
+            "destroy",
+            "restore",
+            "live",
+            "prebuilt_add",
+            "prebuilt_remove",
+        ]:
             return [IsOwnerOrAdmin()]
 
         if self.action in [
@@ -102,6 +113,22 @@ class SurveyViewSet(ModelViewSet):
     def live(self, request, *args, **kwargs):
         survey = self.get_object()
         services.live_survey(survey)
+        return Response(status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="prebuilt/add")
+    def prebuilt_add(self, request, *args, **kwargs):
+        survey = self.get_object()
+        survey.is_prebuilt = True
+        survey.save(update_fields=["is_prebuilt"])
+        return Response(status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="prebuilt/remove")
+    def prebuilt_remove(self, request, *args, **kwargs):
+        survey_uuid = self.kwargs.get("uuid")
+        survey = get_object_or_404(Survey, uuid=survey_uuid, is_prebuilt=True)
+        self.check_object_permissions(request, survey)
+        survey.is_prebuilt = False
+        survey.save(update_fields=["is_prebuilt"])
         return Response(status=status.HTTP_200_OK)
 
 
@@ -272,3 +299,32 @@ class QuestionViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericV
         question = self.get_object()
         services.toggle_live_question(question)
         return Response(status=status.HTTP_200_OK)
+
+
+class PreBuiltSurvey(ReadOnlyModelViewSet):
+    queryset = selectors.get_all_prebuilt_surveys()
+    serializer_class = PreBuiltSurveySerializer
+    lookup_field = "uuid"
+    permission_classes = [IsManagementOrProfessorOrAdmin]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["action"] = self.action
+        return context
+
+    @action(detail=True, methods=["post"], url_path="create")
+    def create_prebuilt(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={
+                "request": request,
+                "action": "create_prebuilt",
+                "survey_uuid": self.kwargs["uuid"],
+            },
+        )
+        serializer.is_valid(raise_exception=True)
+        survey = serializer.save()
+        return Response(
+            {"survey_uuid": str(survey.uuid), "message": "نظرسنجی جدید ساخته شد."},
+            status=201,
+        )

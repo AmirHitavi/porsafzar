@@ -5,6 +5,7 @@ from submissions.api.views import AnswerSetViewSet
 from surveys.api.views import (
     OneTimeLinkAccessView,
     OneTimeLinkViewSet,
+    PreBuiltSurvey,
     QuestionViewSet,
     SurveyFormSettingsViewSet,
     SurveyFormViewSet,
@@ -15,6 +16,7 @@ from surveys.api.views import (
 router = DefaultRouter()
 
 router.register("surveys", SurveyViewSet, basename="survey")
+router.register("prebuilt-surveys", PreBuiltSurvey, "prebuilt-survey")
 router.register("target-audiences", TargetAudienceViewSet, basename="target-audience")
 
 surveys_router = NestedDefaultRouter(router, "surveys", lookup="survey")

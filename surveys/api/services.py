@@ -94,3 +94,7 @@ def toggle_live_question(question: Question):
     question.is_live = not question.is_live
     question.save(update_fields=["is_live"])
     return question
+
+
+def active_prebuilt(survey: Survey):
+    pass
