@@ -1,0 +1,1740 @@
+{
+	"info": {
+		"_postman_id": "71213083-5df2-4c68-8e28-a3b611958699",
+		"name": "porsafzar_sharif",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "32904574"
+	},
+	"item": [
+		{
+			"name": "accounts",
+			"item": [
+				{
+					"name": "users",
+					"item": [
+						{
+							"name": "id",
+							"item": [
+								{
+									"name": "user read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/auth/users/:id/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"auth",
+												"users",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "2"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "user update",
+									"request": {
+										"method": "PATCH",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{   \n    \"email\": \"amirhitavi@gmail.com\",\n    \"role\": 3,\n    \"birth_date\": null,\n    \"is_active\": true,\n    \"is_staff\": true,\n    \"is_superuser\": true\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/auth/users/:id/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"auth",
+												"users",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "2"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "user delete",
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/auth/users/:id/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"auth",
+												"users",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "2"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							],
+							"description": "**Only staff users and admin user allowed**"
+						},
+						{
+							"name": "users create",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"09354065743\", // شماره تلفن ضروری است و به فرم ۰۹۱۹۱۲۳۴۵۶۷\n    \"email\": \"amirhitavi@gmail.com\", // اختیاری است\n    \"role\": null // اختیاری است\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/"
+							},
+							"response": []
+						},
+						{
+							"name": "users create verify otp",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"09354065743\", // شماره تلفن ضروری است و به فرم ۰۹۱۹۱۲۳۴۵۶۷\n    \"otp\": \"368286\" // کد ۶ رقمی یکبار مصرف\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/create/verify-otp/"
+							},
+							"response": []
+						},
+						{
+							"name": "users create resend otp",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"09354065743\" // شماره تلفن ضروری است و به فرم ۰۹۱۹۱۲۳۴۵۶۷\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/create/resend-otp/"
+							},
+							"response": []
+						},
+						{
+							"name": "users login",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"09939909304\" // شماره تلفن ضروری است و به فرم ۰۹۱۹۱۲۳۴۵۶۷\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/login/"
+							},
+							"response": []
+						},
+						{
+							"name": "users login verify otp",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"09939909304\", // شماره تلفن ضروری است و به فرم ۰۹۱۹۱۲۳۴۵۶۷\n    \"otp\": \"824334\" // کد ۶ رقمی یکبار مصرف\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/login/verify-otp/"
+							},
+							"response": []
+						},
+						{
+							"name": "users login resend otp",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"phone_number\": \"09939909311\" // شماره تلفن ضروری است و به فرم ۰۹۱۹۱۲۳۴۵۶۷\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/login/resend-otp/"
+							},
+							"response": []
+						},
+						{
+							"name": "users logout",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc2MTU0NTYzNCwiaWF0IjoxNzYxNDU5MjM0LCJqdGkiOiJmYmRlMzJjNzYwYzg0NDE3ODM1ZTBlNTdjMjQ2MjY3OCIsInVzZXJfaWQiOjJ9.gn7H338czCsyCLLDkHapMyUCvJ-6EZHynEXmXX4_yOY\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/users/logout/"
+							},
+							"response": []
+						},
+						{
+							"name": "users me",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{BaseUrl}}/auth/users/me/"
+							},
+							"response": []
+						},
+						{
+							"name": "users me",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"amirhitavi@gmail.com\", //اختیاری\n    \"birth_date\": null // اختیاری\n}  \n",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}/auth/users/me/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"auth",
+										"users",
+										"me",
+										""
+									],
+									"query": [
+										{
+											"key": "",
+											"value": "",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "users list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{BaseUrl}}/auth/users/"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "jwt",
+					"item": [
+						{
+							"name": "jwt refresh",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc2MjA4MDk5NywiaWF0IjoxNzYxOTk0NTk3LCJqdGkiOiJiMzdmZWI0YjJjN2E0MDFjYjg4MjdiOWJiODk0NzliZSIsInVzZXJfaWQiOjF9.xxIjwWue8wSmmuHHAXOmBvoRchg4p8MmGjYDqRFJofg\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/jwt/refresh/"
+							},
+							"response": []
+						},
+						{
+							"name": "jwt verify",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc2MTIxMzg0MywiaWF0IjoxNzYxMTI3NDQzLCJqdGkiOiIwNmFjNTQ1N2EzMTE0NjRhYjkyZGE1MDQ0NDZiZWMzMSIsInVzZXJfaWQiOjF9.O-dcmg_Ia8QdK3C8KJHd5qdyav2lEH3zsylCAENeGxc\" // refresh token\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/auth/jwt/verify/"
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"description": "This app use for user managment and user authentication with otp"
+		},
+		{
+			"name": "surveys",
+			"item": [
+				{
+					"name": "survey",
+					"item": [
+						{
+							"name": "uuid",
+							"item": [
+								{
+									"name": "survey_read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:uuid",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":uuid"
+											],
+											"variable": [
+												{
+													"key": "uuid",
+													"value": "bb827539-9398-464e-a0de-5da0df7d081a"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_partial_update",
+									"request": {
+										"method": "PATCH",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"title\": \"forth survey [we use this for soft delete operations] update\" // اختیاری \n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "uuid",
+													"value": "bb827539-9398-464e-a0de-5da0df7d081a"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_delete",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxNDYxMjA5LCJpYXQiOjE3NjE0NTk0MDksImp0aSI6Ijk4ZDM0YmZkY2E3MTRlMDdhYmNlYjQ2ODdjZWYwODlhIiwidXNlcl9pZCI6MX0.GVzon6xjPsGfQZxJs1hMen5bUnSoLfHpBcB-Bfcv_zE",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "uuid",
+													"value": "bb827539-9398-464e-a0de-5da0df7d081a"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_restore",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:uuid/restore/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":uuid",
+												"restore",
+												""
+											],
+											"variable": [
+												{
+													"key": "uuid",
+													"value": "bb827539-9398-464e-a0de-5da0df7d081a"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_add_prebuilt",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:uuid/prebuilt/add/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":uuid",
+												"prebuilt",
+												"add",
+												""
+											],
+											"variable": [
+												{
+													"key": "uuid",
+													"value": "d19948c7-1012-457a-9b7b-4a9c33fd5d09"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_remove_prebuilt",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:uuid/prebuilt/remove/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":uuid",
+												"prebuilt",
+												"remove",
+												""
+											],
+											"variable": [
+												{
+													"key": "uuid",
+													"value": "d19948c7-1012-457a-9b7b-4a9c33fd5d09"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_live",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/live/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"live",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "survey_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{BaseUrl}}/surveys/"
+							},
+							"response": []
+						},
+						{
+							"name": "survey_create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"data\": {\n  \"title\": \"Sixth Survey[we use this for one time token]\",\n  \"logo\": \"https://surveyjs.io/Content/Images/examples/logo.png\",\n  \"logoHeight\": \"60px\",\n  \"completedHtml\": \"<h3>Thank you for your feedback</h3>\",\n  \"pages\": [\n    {\n      \"name\": \"page1\",\n      \"elements\": [\n        {\n          \"type\": \"radiogroup\",\n          \"name\": \"question1\",\n          \"title\": \"radio group type q\",\n          \"choices\": [\n            \"Item 1\",\n            \"Item 2\",\n            \"Item 3\"\n          ]\n        },\n        {\n          \"type\": \"checkbox\",\n          \"name\": \"question2\",\n          \"title\": \"checkbox\",\n          \"choices\": [\n            \"Item 1\",\n            \"Item 2\",\n            \"Item 3\"\n          ]\n        },\n        {\n          \"type\": \"dropdown\",\n          \"name\": \"question3\",\n          \"title\": \"dropdown\",\n          \"choices\": [\n            \"Item 1\",\n            \"Item 2\",\n            \"Item 3\"\n          ]\n        },\n        {\n          \"type\": \"tagbox\",\n          \"name\": \"question4\",\n          \"title\": \"tagbox\",\n          \"choices\": [\n            \"Item 1\",\n            \"Item 2\",\n            \"Item 3\"\n          ]\n        },\n        {\n          \"type\": \"boolean\",\n          \"name\": \"question5\",\n          \"title\": \"boolean\"\n        }\n      ]\n    }\n  ],\n  \"headerView\": \"advanced\"\n}\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/surveys/"
+							},
+							"response": []
+						},
+						{
+							"name": "survey_list_soft_deleted",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{BaseUrl}}/surveys/archived/"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "survey_form",
+					"item": [
+						{
+							"name": "uuid",
+							"item": [
+								{
+									"name": "survey_form_read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+												},
+												{
+													"key": "uuid",
+													"value": "5c9623d9-e81f-4298-9bb0-b74532f9a90d"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_form_delete",
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+												},
+												{
+													"key": "uuid",
+													"value": "b6660db7-b79b-4e8b-86c6-6abe8eb31714"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_form_restore",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:uuid/restore/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":uuid",
+												"restore",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+												},
+												{
+													"key": "uuid",
+													"value": "b6660db7-b79b-4e8b-86c6-6abe8eb31714"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_form_active",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:form_uuid/activate/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":form_uuid",
+												"activate",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+												},
+												{
+													"key": "form_uuid",
+													"value": "5c9623d9-e81f-4298-9bb0-b74532f9a90d"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_form_add_target",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"target\": 1\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:uuid/target/add/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":uuid",
+												"target",
+												"add",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+												},
+												{
+													"key": "uuid",
+													"value": "9412e8bf-7135-4b9c-95c9-37e5bf1fd50b"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_form_remove_target",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:uuid/target/remove/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":uuid",
+												"target",
+												"remove",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+												},
+												{
+													"key": "uuid",
+													"value": "9412e8bf-7135-4b9c-95c9-37e5bf1fd50b"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "survey_form_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"forms",
+										""
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "survey_form_create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"version\":5, //ضروری است\n    \"description\": \"for target\",\n    \"target\": 2,\n    \"metadata\": {\n  \"title\": \"version 5 for target in creation\",\n  \"logo\": \"https://surveyjs.io/Content/Images/examples/logo.png\",\n  \"logoHeight\": \"60px\",\n  \"completedHtml\": \"<h3>Thank you for your feedback</h3>\",\n  \"pages\": [\n    {\n      \"name\": \"page1\",\n      \"elements\": [\n        {\n          \"type\": \"tagbox\",\n          \"name\": \"question1\",\n          \"choices\": [\n            \"Item 1\",\n            \"Item 2\",\n            \"Item 3\"\n          ]\n        },\n        {\n          \"type\": \"tagbox\",\n          \"name\": \"question2\",\n          \"choices\": [\n            {\n              \"value\": \"Item 1\",\n              \"text\": \"the beatles\"\n            },\n            {\n              \"value\": \"Item 2\",\n              \"text\": \"elvis\"\n            },\n            {\n              \"value\": \"Item 3\",\n              \"text\": \"rolling stones\"\n            },\n            {\n              \"value\": \"Item 4\",\n              \"text\": \"black sabbath\"\n            },\n            {\n              \"value\": \"Item 5\",\n              \"text\": \"led zeppelin\"\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"headerView\": \"advanced\"\n}\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"forms",
+										""
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "survey_form_arhived",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/archived",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"forms",
+										"archived"
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "c72a44c9-f597-46c6-bdfa-0df6ea0110ad"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "survey_form_setting",
+					"item": [
+						{
+							"name": "id",
+							"item": [
+								{
+									"name": "survey_form_setting_read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:form_uuid/settings/:id",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":form_uuid",
+												"settings",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "17726fd9-302a-404f-8b68-fb36d817d8d0"
+												},
+												{
+													"key": "form_uuid",
+													"value": "5079e9ee-d01c-48b8-baee-0c341431fd96"
+												},
+												{
+													"key": "id",
+													"value": "39"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "survey_form_setting_partial_update",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxNDYzMDgzLCJpYXQiOjE3NjE0NTk0MDksImp0aSI6IjE3ZTBhMWRjMDBjNjRjZjVhMDE3M2E3MDQzMzY5NTkyIiwidXNlcl9pZCI6MX0.7GK5Me4DvXYHfyDe8EBPhVyCJKOgXEVG2yZrVEvdh7E",
+												"type": "text"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"is_active\": true,\n    \"start_date\": null,\n    \"end_date\": null,\n    \"max_submissions_per_user\": null, // اختیاری\n    \"is_editable\": true // اختیاری\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:form_uuid/settings/:id/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":form_uuid",
+												"settings",
+												":id",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "17726fd9-302a-404f-8b68-fb36d817d8d0"
+												},
+												{
+													"key": "form_uuid",
+													"value": "5079e9ee-d01c-48b8-baee-0c341431fd96"
+												},
+												{
+													"key": "id",
+													"value": "39"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "target_audience",
+					"item": [
+						{
+							"name": "id",
+							"item": [
+								{
+									"name": "read_target_audience",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/target-audiences/:id",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"target-audiences",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": ""
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "target_audience_partial_update",
+									"request": {
+										"method": "PATCH",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"name\": null, // اختیاری\n    \"description\":  null, // اختیاری\n    \"roles\": [],\n    \"include_phone_numbers\": [],\n    \"exclude_phone_numbers\": []\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/target-audiences/:id",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"target-audiences",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": ""
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "delete_target_audience",
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/target-audiences/:id",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"target-audiences",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": ""
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "list_target_audience",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{BaseUrl}}/target-audiences/"
+							},
+							"response": []
+						},
+						{
+							"name": "create_target_audience",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": null, // اختیاری\n    \"description\":  null, // اختیاری\n    \"roles\": [1, 2, 3, 4, 5],\n    \"include_phone_numbers\": [],\n    \"exclude_phone_numbers\": [\"09939909304\"]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": "{{BaseUrl}}/target-audiences/"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "one_time_link",
+					"item": [
+						{
+							"name": "one_time_links_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:uuid/links/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":uuid",
+										"links",
+										""
+									],
+									"variable": [
+										{
+											"key": "uuid",
+											"value": "d6f9b217-f935-427e-9194-61ff9b484e03"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "one_time_token_create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"numbers\": 10\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:uuid/links/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":uuid",
+										"links",
+										""
+									],
+									"variable": [
+										{
+											"key": "uuid",
+											"value": "d6f9b217-f935-427e-9194-61ff9b484e03"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "access_one_time_token",
+					"item": [
+						{
+							"name": "read_access_token",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/:token/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										":token",
+										""
+									],
+									"variable": [
+										{
+											"key": "token",
+											"value": "QkWbLjnwOgKZ5hd2ewpuPA"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "questions",
+					"item": [
+						{
+							"name": "uuid",
+							"item": [
+								{
+									"name": "question_read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:form_uuid/questions/:uuid",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":form_uuid",
+												"questions",
+												":uuid"
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+												},
+												{
+													"key": "form_uuid",
+													"value": "ee205162-3584-49ae-a0b7-65c4aa87c1ad"
+												},
+												{
+													"key": "uuid",
+													"value": "2652026d-3d7b-403b-832d-bd4b8b775779"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "question_live",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:form_uuid/questions/:uuid/live/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"forms",
+												":form_uuid",
+												"questions",
+												":uuid",
+												"live",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+												},
+												{
+													"key": "form_uuid",
+													"value": "ee205162-3584-49ae-a0b7-65c4aa87c1ad"
+												},
+												{
+													"key": "uuid",
+													"value": "2652026d-3d7b-403b-832d-bd4b8b775779"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "question_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/forms/:form_uuid/questions/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"forms",
+										":form_uuid",
+										"questions",
+										""
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+										},
+										{
+											"key": "form_uuid",
+											"value": "ee205162-3584-49ae-a0b7-65c4aa87c1ad"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "prebuilt_survey",
+					"item": [
+						{
+							"name": "uuid",
+							"item": [
+								{
+									"name": "prebuilt_survey_read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/prebuilt-surveys/:survey_uuid",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"prebuilt-surveys",
+												":survey_uuid"
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "d19948c7-1012-457a-9b7b-4a9c33fd5d09"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "prebuilt_survey_create",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"version\": 1,\n    \"title\": \"new title from prebuilt survey\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/prebuilt-surveys/:survey_uuid/create/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"prebuilt-surveys",
+												":survey_uuid",
+												"create",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "d19948c7-1012-457a-9b7b-4a9c33fd5d09"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "prebuilt_survey_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "{{BaseUrl}}/prebuilt-surveys/"
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "submissions",
+			"item": [
+				{
+					"name": "answer_set",
+					"item": [
+						{
+							"name": "uuid",
+							"item": [
+								{
+									"name": "answer_set_read",
+									"request": {
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"submissions",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+												},
+												{
+													"key": "uuid",
+													"value": "0cbdf24b-f6f2-4502-962f-68ac108993e1"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "answer_set_delete",
+									"request": {
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"submissions",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "f94eee3b-9e9b-46a1-b412-bbc65460d3c3"
+												},
+												{
+													"key": "uuid",
+													"value": "ee028821-b4e5-4407-8118-944fc7d2bf06"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "answer_set_partial_update",
+									"request": {
+										"method": "PATCH",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"metadata\": {\n    \"question5\": true\n}\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/:uuid/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"submissions",
+												":uuid",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+												},
+												{
+													"key": "uuid",
+													"value": "0705ca2c-68d5-4980-977a-e4f54ac1344e"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "answer_set_restore",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYxNDYwMDgxLCJpYXQiOjE3NjE0NTgyODEsImp0aSI6IjRlMWFhMzMyMzE2ZTQ3N2E5M2EyZWRkN2ExNjVhOTE4IiwidXNlcl9pZCI6MX0.GWx5xf8MkGGvf_ybO1JjXJwsdGto0t0rNt2fjBrICl4",
+												"type": "text"
+											}
+										],
+										"url": {
+											"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/:uuid/restore/",
+											"host": [
+												"{{BaseUrl}}"
+											],
+											"path": [
+												"surveys",
+												":survey_uuid",
+												"submissions",
+												":uuid",
+												"restore",
+												""
+											],
+											"variable": [
+												{
+													"key": "survey_uuid",
+													"value": "2d26ce60-3126-4b7f-8fc6-b0fe35fe9c67"
+												},
+												{
+													"key": "uuid",
+													"value": "0cbdf24b-f6f2-4502-962f-68ac108993e1"
+												}
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "answer_set_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"submissions",
+										""
+									],
+									"query": [
+										{
+											"key": "form_uuid",
+											"value": "518df050-445c-450d-96bc-7befaf4fdfac",
+											"disabled": true
+										}
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "answer_set_create",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"metadata\": {\n    \"question1\": \"Item 2\",\n    \"question2\": [\n        \"Item 1\"\n    ],\n    \"question3\": \"Item 2\",\n    \"question4\": [\n        \"Item 1\",\n        \"Item 2\"\n    ],\n    \"question5\": false\n}\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"submissions",
+										""
+									],
+									"query": [
+										{
+											"key": "token",
+											"value": "4uCWjFKysJgM-yEPTqpi2Q",
+											"disabled": true
+										},
+										{
+											"key": "form_uuid",
+											"value": "cf719ac9-be26-43cb-a9ed-6676b6978c0f",
+											"disabled": true
+										}
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "answer_set_archived_list",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/archived/",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"submissions",
+										"archived",
+										""
+									],
+									"query": [
+										{
+											"key": "form_uuid",
+											"value": "518df050-445c-450d-96bc-7befaf4fdfac",
+											"disabled": true
+										}
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "2d26ce60-3126-4b7f-8fc6-b0fe35fe9c67"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "answer_set_chart",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{BaseUrl}}/surveys/:survey_uuid/submissions/chart/?questions=question1,question2",
+									"host": [
+										"{{BaseUrl}}"
+									],
+									"path": [
+										"surveys",
+										":survey_uuid",
+										"submissions",
+										"chart",
+										""
+									],
+									"query": [
+										{
+											"key": "form_uuid",
+											"value": "cf719ac9-be26-43cb-a9ed-6676b6978c0f",
+											"disabled": true
+										},
+										{
+											"key": "questions",
+											"value": "question1,question2"
+										}
+									],
+									"variable": [
+										{
+											"key": "survey_uuid",
+											"value": "6a3e3f24-0fe7-477f-98c9-8eb45297eba3"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": {
+			"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYzNjM5MDEwLCJpYXQiOjE3NjM2MzU0MTAsImp0aSI6ImQwYjc2NGQwYmExNjRiMjk5NmQwYzI1MGVmZjFhODNiIiwidXNlcl9pZCI6IjEifQ.kcKGZ-mj8MdxiXim1-tq0uFi85JmWHLd77deiegZLxc"
+		}
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
